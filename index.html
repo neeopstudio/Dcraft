@@ -1,0 +1,2734 @@
+<!DOCTYPE html>
+<html lang="id" class="dark">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+  <meta name="theme-color" content="#09090B" />
+  <meta name="apple-mobile-web-app-capable" content="yes" />
+  <meta name="mobile-web-app-capable" content="yes" />
+  <meta name="apple-mobile-web-app-title" content="Media Suite" />
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+  <!-- PWA -->
+  <link rel="manifest" href="./manifest.json" />
+  <link rel="icon" type="image/png" href="./icons/icon-192.png" />
+  <link rel="apple-touch-icon" href="./icons/icon-192.png" />
+  <title>Media Suite</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/lamejs/1.2.1/lame.min.js"></script>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Plus+Jakarta+Sans:wght@400;500;600;700&display=swap" rel="stylesheet">
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"Plus Jakarta Sans"', '-apple-system', 'BlinkMacSystemFont', 'sans-serif'],
+            mono: ['"JetBrains Mono"', 'monospace'],
+          },
+          colors: {
+            base: '#09090B',
+            surface: '#121215',
+            line: 'rgba(255, 255, 255, 0.08)',
+          }
+        }
+      }
+    }
+  </script>
+  <style>
+    * {
+      box-sizing: border-box;
+      -webkit-tap-highlight-color: transparent;
+      -webkit-touch-callout: none;
+      user-select: none;
+      -webkit-user-select: none;
+    }
+    input, textarea {
+      user-select: text;
+      -webkit-user-select: text;
+    }
+    html, body {
+      margin: 0;
+      padding: 0;
+      background-color: #09090B;
+      color: #FAFAFA;
+      overscroll-behavior: none;
+      overflow-x: hidden;
+      height: 100%;
+      font-family: 'Plus Jakarta Sans', -apple-system, sans-serif;
+    }
+    .pt-safe {
+      padding-top: max(14px, env(safe-area-inset-top));
+    }
+    .pb-safe {
+      padding-bottom: max(14px, env(safe-area-inset-bottom));
+    }
+    .view-section {
+      display: none;
+      animation: viewEnter 0.28s cubic-bezier(0.22, 1, 0.36, 1) forwards;
+    }
+    .view-section.active {
+      display: flex;
+    }
+    @keyframes viewEnter {
+      from {
+        opacity: 0;
+        transform: translateY(6px);
+      }
+      to {
+        opacity: 1;
+        transform: translateY(0);
+      }
+    }
+    .pressable {
+      transition: transform 0.16s cubic-bezier(0.22, 1, 0.36, 1), background-color 0.16s ease, opacity 0.16s ease;
+    }
+    .pressable:active {
+      transform: scale(0.97);
+    }
+    input[type="range"] {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 100%;
+      height: 2px;
+      background: rgba(255, 255, 255, 0.16);
+      outline: none;
+    }
+    input[type="range"]::-webkit-slider-thumb {
+      -webkit-appearance: none;
+      appearance: none;
+      width: 18px;
+      height: 18px;
+      border-radius: 9999px;
+      background: #FAFAFA;
+      cursor: pointer;
+      border: 2px solid #09090B;
+    }
+    ::-webkit-scrollbar {
+      display: none;
+    }
+  </style>
+</head>
+<body class="bg-base text-zinc-100 flex flex-col h-full" oncontextmenu="return false;">
+
+  <!-- Minimal Floating Toast -->
+  <div id="toast" class="fixed top-4 left-1/2 -translate-x-1/2 z-[80] pointer-events-none opacity-0 transition-all duration-200 translate-y-[-8px]">
+    <div class="bg-zinc-100 text-zinc-950 text-xs font-semibold tracking-tight px-3.5 py-2 rounded-full flex items-center gap-2">
+      <span id="toast-dot" class="w-1.5 h-1.5 rounded-full bg-zinc-950"></span>
+      <span id="toast-text">OK</span>
+    </div>
+  </div>
+
+  <!-- Menu Button (Pojok Kanan Atas) -->
+  <button id="menu-btn" type="button" class="pressable fixed right-3 z-[45] w-9 h-9 rounded-full bg-surface border border-line flex items-center justify-center text-zinc-200" style="top:max(10px, env(safe-area-inset-top))">
+    <i data-lucide="menu" class="w-4 h-4"></i>
+  </button>
+
+  <!-- ==================== SIDEBAR PENGATURAN ==================== -->
+  <div id="sidebar" class="fixed inset-0 z-[60] hidden">
+    <div id="sb-overlay" class="absolute inset-0 bg-black/60"></div>
+    <aside id="sb-panel" class="absolute right-0 top-0 bottom-0 w-[86%] max-w-xs bg-base border-l border-line flex flex-col translate-x-full transition-transform duration-200">
+      <div class="pt-safe px-4 pb-3 border-b border-line flex items-center justify-between">
+        <p class="text-sm font-semibold text-zinc-100">Pengaturan</p>
+        <button id="sb-close" type="button" class="pressable w-9 h-9 rounded-full bg-surface flex items-center justify-center text-zinc-200">
+          <i data-lucide="x" class="w-4 h-4"></i>
+        </button>
+      </div>
+
+      <div class="flex-1 overflow-y-auto pb-safe">
+        <!-- Data Lokal -->
+        <div class="px-4 pt-4 pb-3 border-b border-line">
+          <p class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Data Lokal</p>
+
+          <div class="flex items-center justify-between gap-3 mb-3">
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-zinc-100">Simpan hasil otomatis</p>
+              <p class="text-[11px] text-zinc-500">Album tersimpan di perangkat</p>
+            </div>
+            <button id="sb-autosave" type="button" class="pressable relative w-11 h-6 rounded-full bg-zinc-100 shrink-0">
+              <span id="sb-autosave-knob" class="absolute top-0.5 left-[22px] w-5 h-5 rounded-full bg-zinc-950 transition-all duration-150"></span>
+            </button>
+          </div>
+
+          <div class="flex items-center justify-between font-mono text-[11px] mb-3">
+            <span class="text-zinc-500">Pemakaian</span>
+            <span id="sb-storage" class="text-zinc-200">-</span>
+          </div>
+
+          <button id="sb-persist" type="button" class="pressable w-full h-10 rounded-xl bg-surface text-xs font-medium text-zinc-200 flex items-center justify-center gap-2">
+            <i data-lucide="shield-check" class="w-4 h-4"></i>
+            <span>Kunci penyimpanan permanen</span>
+          </button>
+        </div>
+
+        <!-- Hapus Recent -->
+        <div class="px-4 pt-4 pb-3 border-b border-line">
+          <p class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Hapus Hasil Terbaru</p>
+          <div class="divide-y divide-line">
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-xs text-zinc-200">Unduh</span>
+              <div class="flex items-center gap-2.5">
+                <span data-count="download" class="text-[11px] font-mono text-zinc-500">0</span>
+                <button type="button" data-clear="download" class="sb-clear pressable w-8 h-8 rounded-lg bg-surface text-zinc-400 flex items-center justify-center"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-xs text-zinc-200">Upscale</span>
+              <div class="flex items-center gap-2.5">
+                <span data-count="upscale" class="text-[11px] font-mono text-zinc-500">0</span>
+                <button type="button" data-clear="upscale" class="sb-clear pressable w-8 h-8 rounded-lg bg-surface text-zinc-400 flex items-center justify-center"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-xs text-zinc-200">Kompres</span>
+              <div class="flex items-center gap-2.5">
+                <span data-count="compress" class="text-[11px] font-mono text-zinc-500">0</span>
+                <button type="button" data-clear="compress" class="sb-clear pressable w-8 h-8 rounded-lg bg-surface text-zinc-400 flex items-center justify-center"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+            <div class="flex items-center justify-between py-2.5">
+              <span class="text-xs text-zinc-200">MP3</span>
+              <div class="flex items-center gap-2.5">
+                <span data-count="mp3" class="text-[11px] font-mono text-zinc-500">0</span>
+                <button type="button" data-clear="mp3" class="sb-clear pressable w-8 h-8 rounded-lg bg-surface text-zinc-400 flex items-center justify-center"><i data-lucide="trash-2" class="w-3.5 h-3.5"></i></button>
+              </div>
+            </div>
+          </div>
+          <button id="sb-clear-all" type="button" class="pressable mt-2 w-full h-10 rounded-xl bg-surface text-xs font-semibold text-red-400 flex items-center justify-center gap-2">
+            <i data-lucide="trash" class="w-4 h-4"></i>
+            <span>Hapus Semua</span>
+          </button>
+        </div>
+
+        <!-- Resolver Unduhan -->
+        <div class="px-4 pt-4 pb-3 border-b border-line">
+          <p class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-1">Resolver Unduhan</p>
+          <p class="text-[11px] text-zinc-500 mb-3">Untuk IG, YouTube, Bstation. Isi URL instance Cobalt milikmu (opsional).</p>
+          <input id="sb-cobalt-url" type="url" inputmode="url" autocomplete="off" spellcheck="false" placeholder="https://cobalt-kamu.com/" class="w-full h-10 px-3 mb-2 rounded-xl bg-surface text-xs font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none" />
+          <input id="sb-cobalt-key" type="text" autocomplete="off" spellcheck="false" placeholder="API key (jika ada)" class="w-full h-10 px-3 mb-2 rounded-xl bg-surface text-xs font-mono text-zinc-100 placeholder-zinc-600 focus:outline-none" />
+          <button id="sb-cobalt-save" type="button" class="pressable w-full h-10 rounded-xl bg-zinc-100 text-zinc-950 text-xs font-semibold">Simpan</button>
+        </div>
+
+        <!-- Install PWA -->
+        <div class="px-4 pt-4 pb-4">
+          <p class="text-[11px] font-semibold text-zinc-500 uppercase tracking-wider mb-3">Aplikasi</p>
+          <button id="sb-install" type="button" class="pressable w-full h-10 rounded-xl bg-surface text-xs font-medium text-zinc-200 flex items-center justify-center gap-2">
+            <i data-lucide="smartphone" class="w-4 h-4"></i>
+            <span id="sb-install-text">Pasang Aplikasi</span>
+          </button>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Main Workspace (Saved Albums & Active Staging) -->
+  <main id="main-scroll" class="flex-1 overflow-y-auto pt-safe pb-44">
+    <div class="h-8 shrink-0"></div>
+
+    <!-- ==================== TOOL 1: DOWNLOADER ALBUMS ==================== -->
+    <section id="view-download" class="view-section active flex-col min-h-full">
+      <!-- Empty Minimal State -->
+      <div id="dl-empty" class="flex-1 flex flex-col items-center justify-center py-28 opacity-30">
+        <i data-lucide="folder-down" class="w-8 h-8 stroke-[1.5]"></i>
+      </div>
+
+      <!-- Saved Download Albums Grid -->
+      <div id="dl-albums-grid" class="hidden grid-cols-2 gap-2.5 px-3.5 pt-1"></div>
+    </section>
+
+    <!-- ==================== TOOL 2: UPSCALE ALBUMS ==================== -->
+    <section id="view-upscale" class="view-section flex-col min-h-full">
+      <input id="up-input" type="file" accept="image/*,video/*" class="hidden" />
+
+      <!-- Active Staging Workspace (when file picked) -->
+      <div id="up-workspace" class="hidden flex-col border-b border-line mb-3">
+        <div class="relative w-full bg-black border-b border-line flex items-center justify-center overflow-hidden max-h-[38vh]">
+          <canvas id="up-canvas" class="hidden max-w-full max-h-[38vh] object-contain"></canvas>
+          <video id="up-video" playsinline muted loop class="hidden w-full max-h-[38vh] object-contain"></video>
+          <button id="up-cancel" type="button" class="pressable absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/70 text-zinc-200 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between font-mono text-xs">
+          <span id="up-dim-before" class="text-zinc-500">0 × 0</span>
+          <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-zinc-600"></i>
+          <span id="up-dim-after" class="text-zinc-100 font-semibold">0 × 0</span>
+        </div>
+
+        <div id="up-progress-wrap" class="hidden px-4 py-3">
+          <div class="flex justify-between text-[11px] font-mono text-zinc-400 mb-1.5">
+            <span>Upscaling</span>
+            <span id="up-progress-pct">0%</span>
+          </div>
+          <div class="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="up-progress-bar" class="h-full bg-zinc-100 w-0 transition-all duration-150"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="up-empty" onclick="document.getElementById('up-input').click()" class="flex-1 flex flex-col items-center justify-center py-28 cursor-pointer active:opacity-60">
+        <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center mb-2">
+          <i data-lucide="maximize-2" class="w-5 h-5 text-zinc-400"></i>
+        </div>
+        <span class="text-xs font-medium text-zinc-500">Pilih Media</span>
+      </div>
+
+      <!-- Saved Upscale Albums Grid -->
+      <div id="up-albums-grid" class="hidden grid-cols-2 gap-2.5 px-3.5 pt-1"></div>
+    </section>
+
+    <!-- ==================== TOOL 3: COMPRESS ALBUMS ==================== -->
+    <section id="view-compress" class="view-section flex-col min-h-full">
+      <input id="cmp-input" type="file" accept="image/*,video/*" class="hidden" />
+
+      <!-- Active Staging Workspace -->
+      <div id="cmp-workspace" class="hidden flex-col border-b border-line mb-3">
+        <div class="relative w-full bg-black border-b border-line flex items-center justify-center overflow-hidden max-h-[36vh]">
+          <img id="cmp-img-preview" alt="" class="hidden max-w-full max-h-[36vh] object-contain" />
+          <video id="cmp-video-preview" playsinline muted loop class="hidden w-full max-h-[36vh] object-contain"></video>
+          <button id="cmp-cancel" type="button" class="pressable absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/70 text-zinc-200 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="px-4 py-3.5 border-b border-line">
+          <div class="flex items-center justify-between text-xs mb-2.5">
+            <span class="text-zinc-400 font-medium">Kualitas</span>
+            <span id="cmp-quality-val" class="font-mono font-semibold text-zinc-100">70%</span>
+          </div>
+          <input id="cmp-quality" type="range" min="10" max="95" value="70" />
+        </div>
+
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between font-mono text-xs">
+          <div class="flex items-center gap-2">
+            <span id="cmp-size-before" class="text-zinc-500">0 KB</span>
+            <i data-lucide="arrow-right" class="w-3.5 h-3.5 text-zinc-600"></i>
+            <span id="cmp-size-after" class="text-zinc-100 font-semibold">0 KB</span>
+          </div>
+          <span id="cmp-ratio" class="px-2 py-0.5 rounded bg-surface text-emerald-400 text-[11px]">-0%</span>
+        </div>
+
+        <div id="cmp-progress-wrap" class="hidden px-4 py-3">
+          <div class="flex justify-between text-[11px] font-mono text-zinc-400 mb-1.5">
+            <span>Compressing</span>
+            <span id="cmp-progress-pct">0%</span>
+          </div>
+          <div class="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="cmp-progress-bar" class="h-full bg-zinc-100 w-0 transition-all duration-150"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="cmp-empty" onclick="document.getElementById('cmp-input').click()" class="flex-1 flex flex-col items-center justify-center py-28 cursor-pointer active:opacity-60">
+        <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center mb-2">
+          <i data-lucide="minimize-2" class="w-5 h-5 text-zinc-400"></i>
+        </div>
+        <span class="text-xs font-medium text-zinc-500">Pilih Media</span>
+      </div>
+
+      <!-- Saved Compress Albums Grid -->
+      <div id="cmp-albums-grid" class="hidden grid-cols-2 gap-2.5 px-3.5 pt-1"></div>
+    </section>
+
+    <!-- ==================== TOOL 4: MP4 TO MP3 ALBUMS ==================== -->
+    <section id="view-mp3" class="view-section flex-col min-h-full">
+      <input id="mp3-input" type="file" accept="video/mp4,video/*" class="hidden" />
+
+      <!-- Active Staging Workspace -->
+      <div id="mp3-workspace" class="hidden flex-col border-b border-line mb-3">
+        <div class="relative w-full bg-black border-b border-line flex items-center justify-center overflow-hidden max-h-[34vh]">
+          <video id="mp3-video-preview" playsinline muted loop class="w-full max-h-[34vh] object-contain"></video>
+          <button id="mp3-cancel" type="button" class="pressable absolute top-2.5 right-2.5 w-8 h-8 rounded-full bg-black/70 text-zinc-200 flex items-center justify-center">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+
+        <div class="px-4 py-3 border-b border-line flex items-center justify-between font-mono text-xs">
+          <span id="mp3-duration" class="text-zinc-400">00:00</span>
+          <span id="mp3-out-size" class="text-zinc-100 font-semibold">MP3 • 192 kbps</span>
+        </div>
+
+        <div id="mp3-progress-wrap" class="hidden px-4 py-3">
+          <div class="flex justify-between text-[11px] font-mono text-zinc-400 mb-1.5">
+            <span>Encoding MP3</span>
+            <span id="mp3-progress-pct">0%</span>
+          </div>
+          <div class="w-full h-1 bg-zinc-900 rounded-full overflow-hidden">
+            <div id="mp3-progress-bar" class="h-full bg-zinc-100 w-0 transition-all duration-150"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div id="mp3-empty" onclick="document.getElementById('mp3-input').click()" class="flex-1 flex flex-col items-center justify-center py-28 cursor-pointer active:opacity-60">
+        <div class="w-12 h-12 rounded-full bg-surface flex items-center justify-center mb-2">
+          <i data-lucide="music" class="w-5 h-5 text-zinc-400"></i>
+        </div>
+        <span class="text-xs font-medium text-zinc-500">Pilih Video</span>
+      </div>
+
+      <!-- Saved MP3 Albums List -->
+      <div id="mp3-albums-grid" class="hidden flex-col divide-y divide-line"></div>
+    </section>
+
+  </main>
+
+  <!-- ==================== ALBUM DETAIL SHEET (View All Media Inside Album) ==================== -->
+  <div id="album-modal" class="fixed inset-0 z-50 bg-base hidden flex-col">
+    <!-- Top Bar -->
+    <div class="pt-safe px-4 pb-3 border-b border-line flex items-center justify-between gap-3 bg-base/95 backdrop-blur-md">
+      <button id="album-close" type="button" class="pressable w-9 h-9 rounded-full bg-surface flex items-center justify-center text-zinc-200 shrink-0">
+        <i data-lucide="chevron-down" class="w-5 h-5"></i>
+      </button>
+      <div class="flex-1 min-w-0">
+        <p id="album-modal-title" class="text-xs font-semibold text-zinc-100 truncate"></p>
+        <p id="album-modal-sub" class="text-[11px] font-mono text-zinc-500"></p>
+      </div>
+      <button id="album-delete" type="button" class="pressable w-9 h-9 rounded-full bg-surface flex items-center justify-center text-zinc-400 hover:text-red-400 shrink-0">
+        <i data-lucide="trash-2" class="w-4 h-4"></i>
+      </button>
+    </div>
+
+    <!-- All Media Grid Inside Album -->
+    <div class="flex-1 overflow-y-auto p-3.5 pb-safe">
+      <div id="album-media-grid" class="grid grid-cols-2 gap-2.5"></div>
+      <div id="album-audio-list" class="mt-3 divide-y divide-line"></div>
+    </div>
+  </div>
+
+  <!-- ==================== CUSTOM MEDIA DISPLAY & PLAYER (Zero Browser Controls) ==================== -->
+  <div id="custom-display" class="fixed inset-0 z-[70] bg-black hidden flex-col">
+    <!-- Top Overlay Controls -->
+    <div class="pt-safe px-4 pb-3 flex items-center justify-between gap-2 bg-gradient-to-b from-black/85 to-transparent z-20">
+      <button id="cd-close" type="button" class="pressable w-9 h-9 rounded-full bg-white/10 backdrop-blur-md flex items-center justify-center text-zinc-100">
+        <i data-lucide="x" class="w-4 h-4"></i>
+      </button>
+
+      <div class="flex items-center gap-2">
+        <span id="cd-counter" class="text-xs font-mono text-zinc-300 bg-white/10 px-2.5 py-1 rounded-full">1 / 1</span>
+        <div id="cd-res-pills" class="flex items-center gap-1"></div>
+      </div>
+
+      <button id="cd-download" type="button" class="pressable h-9 px-3.5 rounded-full bg-zinc-100 text-zinc-950 text-xs font-semibold flex items-center gap-1.5">
+        <i data-lucide="download" class="w-3.5 h-3.5"></i>
+        <span>Unduh</span>
+      </button>
+    </div>
+
+    <!-- Center Interactive Display Viewport -->
+    <div id="cd-stage" class="flex-1 relative flex items-center justify-center overflow-hidden touch-none">
+      <!-- Custom Image Viewer -->
+      <img id="cd-img" alt="" class="hidden max-w-full max-h-full object-contain transition-transform duration-150 ease-out will-change-transform" />
+
+      <!-- Custom Video / Live Photo Viewer (NO browser controls attribute) -->
+      <div id="cd-video-wrap" class="hidden relative w-full h-full flex items-center justify-center">
+        <video id="cd-video" playsinline webkit-playsinline class="max-w-full max-h-full object-contain"></video>
+        <div id="cd-play-indicator" class="pointer-events-none absolute inset-0 flex items-center justify-center opacity-0 transition-opacity duration-200">
+          <div class="w-14 h-14 rounded-full bg-black/60 backdrop-blur-md flex items-center justify-center text-white">
+            <i id="cd-play-icon" data-lucide="play" class="w-6 h-6 fill-white"></i>
+          </div>
+        </div>
+      </div>
+
+      <!-- Custom Audio Player Stage -->
+      <div id="cd-audio-wrap" class="hidden flex-col items-center justify-center px-6 w-full max-w-sm">
+        <div id="cd-audio-disc" class="w-28 h-28 rounded-full bg-surface border border-line flex items-center justify-center mb-6">
+          <i data-lucide="music" class="w-10 h-10 text-zinc-200"></i>
+        </div>
+        <p id="cd-audio-title" class="text-sm font-semibold text-zinc-100 text-center truncate w-full mb-1"></p>
+        <p id="cd-audio-meta" class="text-xs font-mono text-zinc-500 mb-6"></p>
+      </div>
+    </div>
+
+    <!-- Custom Bottom Media Controls & Album Strip -->
+    <div class="pb-safe px-4 pt-3 bg-gradient-to-t from-black/90 via-black/75 to-transparent z-20">
+      <!-- Custom Scrubber & Transport (Shown for Video & Audio) -->
+      <div id="cd-transport" class="hidden flex-col gap-2.5 mb-3">
+        <!-- Interactive Scrubber Bar -->
+        <div id="cd-scrubber" class="relative w-full h-5 flex items-center cursor-pointer">
+          <div class="w-full h-1 bg-white/20 rounded-full overflow-hidden">
+            <div id="cd-progress" class="h-full bg-zinc-100 w-0"></div>
+          </div>
+          <div id="cd-thumb" class="absolute w-3.5 h-3.5 rounded-full bg-zinc-100 -ml-1.5 left-0"></div>
+        </div>
+
+        <!-- Custom Play/Pause, Time, Loop, Speed, Volume -->
+        <div class="flex items-center justify-between">
+          <div class="flex items-center gap-3">
+            <button id="cd-btn-play" type="button" class="pressable w-9 h-9 rounded-full bg-zinc-100 text-zinc-950 flex items-center justify-center">
+              <i id="cd-btn-play-icon" data-lucide="pause" class="w-4 h-4"></i>
+            </button>
+            <span id="cd-time" class="text-[11px] font-mono text-zinc-300">00:00 / 00:00</span>
+          </div>
+
+          <div class="flex items-center gap-2">
+            <div id="cd-video-extras" class="flex items-center gap-2">
+              <button id="cd-btn-loop" type="button" class="pressable px-2.5 py-1 rounded-lg bg-zinc-100 text-zinc-950 text-[11px] font-mono font-semibold">
+                Loop
+              </button>
+              <button id="cd-btn-speed" type="button" class="pressable px-2.5 py-1 rounded-lg bg-white/10 text-zinc-200 text-[11px] font-mono">
+                1x
+              </button>
+            </div>
+            <div id="cd-vol-group" class="flex items-center gap-1">
+              <button id="cd-btn-voldown" type="button" class="pressable w-7 h-8 rounded-lg bg-white/10 text-zinc-200 flex items-center justify-center">
+                <i data-lucide="minus" class="w-3.5 h-3.5"></i>
+              </button>
+              <button id="cd-btn-mute" type="button" class="pressable w-8 h-8 rounded-lg bg-white/10 text-zinc-200 flex items-center justify-center">
+                <i id="cd-mute-icon" data-lucide="volume-2" class="w-4 h-4"></i>
+              </button>
+              <button id="cd-btn-volup" type="button" class="pressable w-7 h-8 rounded-lg bg-white/10 text-zinc-200 flex items-center justify-center">
+                <i data-lucide="plus" class="w-3.5 h-3.5"></i>
+              </button>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Album Thumbnails Strip (when album has >1 item) -->
+      <div id="cd-strip" class="hidden flex items-center gap-1.5 overflow-x-auto pb-1"></div>
+    </div>
+  </div>
+
+  <!-- ==================== BOTTOM TOOLS DOCK + NAVIGATION ==================== -->
+  <div id="bottom-stack" class="fixed bottom-0 inset-x-0 z-40 bg-base/95 backdrop-blur-md">
+
+    <!-- TOOL 1 BOTTOM DOCK (Moved from Header to Above Navigation) -->
+    <div id="dock-download" class="tool-dock border-t border-line px-4 py-3">
+      <div id="dl-loader" class="hidden w-full h-[2px] bg-zinc-900 overflow-hidden mb-2.5 rounded-full">
+        <div class="h-full bg-zinc-100 w-1/3 animate-[pulse_1s_infinite]"></div>
+      </div>
+
+      <div class="flex items-center gap-2">
+        <div class="relative flex-1 flex items-center bg-surface rounded-xl h-11 px-3.5">
+          <i data-lucide="link-2" class="w-4 h-4 text-zinc-500 shrink-0 mr-2"></i>
+          <input
+            id="dl-url"
+            type="url"
+            inputmode="url"
+            autocomplete="off"
+            spellcheck="false"
+            placeholder="https://..."
+            class="w-full bg-transparent text-sm text-zinc-100 placeholder-zinc-600 focus:outline-none font-mono"
+          />
+          <button id="dl-clear" type="button" class="hidden text-zinc-500 hover:text-zinc-200 p-1">
+            <i data-lucide="x" class="w-4 h-4"></i>
+          </button>
+        </div>
+        <button id="dl-paste" type="button" class="pressable h-11 px-3 bg-surface hover:bg-zinc-800 text-zinc-300 rounded-xl text-xs font-medium flex items-center gap-1.5 shrink-0">
+          <i data-lucide="clipboard" class="w-4 h-4"></i>
+          <span>Tempel</span>
+        </button>
+        <button id="dl-fetch" type="button" class="pressable h-11 w-11 bg-zinc-100 text-zinc-950 rounded-xl flex items-center justify-center shrink-0">
+          <i data-lucide="arrow-right" class="w-5 h-5"></i>
+        </button>
+      </div>
+
+      <div class="flex items-center justify-between mt-2.5 px-0.5">
+        <div class="flex items-center gap-1.5 text-[11px] font-medium text-zinc-500">
+          <span data-plat="tiktok" class="plat-tag px-2 py-0.5 rounded-md transition-colors">TikTok</span>
+          <span data-plat="instagram" class="plat-tag px-2 py-0.5 rounded-md transition-colors">IG</span>
+          <span data-plat="twitter" class="plat-tag px-2 py-0.5 rounded-md transition-colors">X</span>
+          <span data-plat="youtube" class="plat-tag px-2 py-0.5 rounded-md transition-colors">YT</span>
+          <span data-plat="bstation" class="plat-tag px-2 py-0.5 rounded-md transition-colors">Bstation</span>
+        </div>
+        <span id="dl-status" class="text-[11px] font-mono text-zinc-500"></span>
+      </div>
+    </div>
+
+    <!-- TOOL 2 BOTTOM DOCK (Moved from Header to Above Navigation) -->
+    <div id="dock-upscale" class="tool-dock hidden border-t border-line px-4 py-3">
+      <div class="flex items-center justify-between gap-2">
+        <button id="up-pick" type="button" class="pressable h-11 px-3.5 bg-surface hover:bg-zinc-800 rounded-xl text-xs font-medium flex items-center gap-2 text-zinc-200 min-w-0">
+          <i data-lucide="plus" class="w-4 h-4 shrink-0"></i>
+          <span id="up-filename" class="max-w-[115px] truncate">Foto / Video</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <div class="flex items-center bg-surface p-1 rounded-xl">
+            <button type="button" data-scale="2" class="up-scale-btn pressable px-3 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-100 text-zinc-950">2x</button>
+            <button type="button" data-scale="4" class="up-scale-btn pressable px-3 py-1.5 rounded-lg text-xs font-mono font-semibold text-zinc-400">4x</button>
+          </div>
+
+          <button id="up-run" type="button" class="hidden pressable h-11 px-3.5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="sparkles" class="w-4 h-4"></i>
+            <span>Proses</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOL 3 BOTTOM DOCK (Moved from Header to Above Navigation) -->
+    <div id="dock-compress" class="tool-dock hidden border-t border-line px-4 py-3">
+      <div class="flex items-center justify-between gap-2">
+        <button id="cmp-pick" type="button" class="pressable h-11 px-3.5 bg-surface hover:bg-zinc-800 rounded-xl text-xs font-medium flex items-center gap-2 text-zinc-200 min-w-0">
+          <i data-lucide="plus" class="w-4 h-4 shrink-0"></i>
+          <span id="cmp-filename" class="max-w-[100px] truncate">Foto / Video</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <div class="flex items-center bg-surface p-1 rounded-xl">
+            <button type="button" data-resize="1" class="cmp-resize-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-100 text-zinc-950">100%</button>
+            <button type="button" data-resize="0.75" class="cmp-resize-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold text-zinc-400">75%</button>
+            <button type="button" data-resize="0.5" class="cmp-resize-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold text-zinc-400">50%</button>
+          </div>
+
+          <button id="cmp-run" type="button" class="hidden pressable h-11 px-3.5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="check" class="w-4 h-4"></i>
+            <span>Simpan</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- TOOL 4 BOTTOM DOCK (Moved from Header to Above Navigation) -->
+    <div id="dock-mp3" class="tool-dock hidden border-t border-line px-4 py-3">
+      <div class="flex items-center justify-between gap-2">
+        <button id="mp3-pick" type="button" class="pressable h-11 px-3.5 bg-surface hover:bg-zinc-800 rounded-xl text-xs font-medium flex items-center gap-2 text-zinc-200 min-w-0">
+          <i data-lucide="plus" class="w-4 h-4 shrink-0"></i>
+          <span id="mp3-filename" class="max-w-[105px] truncate">File MP4</span>
+        </button>
+
+        <div class="flex items-center gap-2">
+          <div class="flex items-center bg-surface p-1 rounded-xl">
+            <button type="button" data-kbps="128" class="mp3-kbps-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold text-zinc-400">128k</button>
+            <button type="button" data-kbps="192" class="mp3-kbps-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold bg-zinc-100 text-zinc-950">192k</button>
+            <button type="button" data-kbps="320" class="mp3-kbps-btn pressable px-2 py-1.5 rounded-lg text-xs font-mono font-semibold text-zinc-400">320k</button>
+          </div>
+
+          <button id="mp3-run" type="button" class="hidden pressable h-11 px-3.5 bg-zinc-100 text-zinc-950 rounded-xl text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="repeat" class="w-4 h-4"></i>
+            <span>Konversi</span>
+          </button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Bottom Thumb-Zone Navigation (4 Tools) -->
+    <nav class="border-t border-line pb-safe">
+      <div class="grid grid-cols-4 h-14">
+        <button type="button" data-tab="download" class="nav-btn pressable flex flex-col items-center justify-center gap-1 text-zinc-100">
+          <i data-lucide="arrow-down-to-line" class="w-4 h-4"></i>
+          <span class="text-[10px] font-semibold tracking-tight">Unduh</span>
+        </button>
+        <button type="button" data-tab="upscale" class="nav-btn pressable flex flex-col items-center justify-center gap-1 text-zinc-500">
+          <i data-lucide="maximize-2" class="w-4 h-4"></i>
+          <span class="text-[10px] font-medium tracking-tight">Upscale</span>
+        </button>
+        <button type="button" data-tab="compress" class="nav-btn pressable flex flex-col items-center justify-center gap-1 text-zinc-500">
+          <i data-lucide="minimize-2" class="w-4 h-4"></i>
+          <span class="text-[10px] font-medium tracking-tight">Kompres</span>
+        </button>
+        <button type="button" data-tab="mp3" class="nav-btn pressable flex flex-col items-center justify-center gap-1 text-zinc-500">
+          <i data-lucide="music" class="w-4 h-4"></i>
+          <span class="text-[10px] font-medium tracking-tight">MP3</span>
+        </button>
+      </div>
+    </nav>
+  </div>
+
+  <script>
+    lucide.createIcons();
+
+    // Dynamic Main Bottom Padding Sync with Bottom Dock + Nav
+    const bottomStack = document.getElementById('bottom-stack');
+    const mainScroll = document.getElementById('main-scroll');
+    function syncBottomPadding() {
+      if (bottomStack && mainScroll) {
+        mainScroll.style.paddingBottom = (bottomStack.offsetHeight + 16) + 'px';
+      }
+    }
+    if (window.ResizeObserver) {
+      new ResizeObserver(syncBottomPadding).observe(bottomStack);
+    }
+    syncBottomPadding();
+
+    // Subtle Web Audio Tactile Feedback
+    const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    function hapticTick(freq = 520, dur = 0.018) {
+      try {
+        if (audioCtx.state === 'suspended') audioCtx.resume();
+        const osc = audioCtx.createOscillator();
+        const gain = audioCtx.createGain();
+        osc.type = 'sine';
+        osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+        gain.gain.setValueAtTime(0.03, audioCtx.currentTime);
+        gain.gain.exponentialRampToValueAtTime(0.0001, audioCtx.currentTime + dur);
+        osc.connect(gain);
+        gain.connect(audioCtx.destination);
+        osc.start();
+        osc.stop(audioCtx.currentTime + dur);
+      } catch (e) {}
+    }
+
+    // Minimal Toast Helper
+    let toastTimer;
+    function showToast(msg) {
+      const el = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = msg;
+      el.classList.remove('opacity-0', 'translate-y-[-8px]');
+      el.classList.add('opacity-100', 'translate-y-0');
+      clearTimeout(toastTimer);
+      toastTimer = setTimeout(() => {
+        el.classList.add('opacity-0', 'translate-y-[-8px]');
+        el.classList.remove('opacity-100', 'translate-y-0');
+      }, 2000);
+    }
+
+    // Format Bytes & Time Helpers
+    function formatBytes(bytes) {
+      if (!bytes || bytes === 0) return '0 B';
+      const k = 1024;
+      const sizes = ['B', 'KB', 'MB', 'GB'];
+      const i = Math.floor(Math.log(bytes) / Math.log(k));
+      return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+    }
+
+    function formatTime(sec) {
+      if (!sec || isNaN(sec)) return '00:00';
+      const m = Math.floor(sec / 60).toString().padStart(2, '0');
+      const s = Math.floor(sec % 60).toString().padStart(2, '0');
+      return `${m}:${s}`;
+    }
+
+    // Force Download Helper
+    async function triggerDownload(url, filename) {
+      hapticTick(680, 0.03);
+      showToast('Mengunduh...');
+      try {
+        if (url.startsWith('blob:') || url.startsWith('data:')) {
+          const a = document.createElement('a');
+          a.href = url;
+          a.download = filename;
+          document.body.appendChild(a);
+          a.click();
+          a.remove();
+          showToast('Tersimpan');
+          return;
+        }
+        const res = await fetch(url);
+        const blob = await res.blob();
+        const blobUrl = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = blobUrl;
+        a.download = filename;
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+        showToast('Tersimpan');
+      } catch (err) {
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = filename;
+        a.target = '_blank';
+        a.rel = 'noopener';
+        document.body.appendChild(a);
+        a.click();
+        a.remove();
+      }
+    }
+
+    // Generate Thumbnail Frame from Video Blob
+    function captureVideoThumb(blob) {
+      return new Promise(resolve => {
+        const v = document.createElement('video');
+        v.muted = true;
+        v.playsInline = true;
+        v.src = URL.createObjectURL(blob);
+        v.onloadeddata = () => {
+          v.currentTime = Math.min(0.2, (v.duration || 1) * 0.1);
+        };
+        v.onseeked = () => {
+          try {
+            const c = document.createElement('canvas');
+            c.width = 320;
+            c.height = Math.max(180, Math.round((v.videoHeight / (v.videoWidth || 1)) * 320));
+            c.getContext('2d').drawImage(v, 0, 0, c.width, c.height);
+            const dataUrl = c.toDataURL('image/jpeg', 0.72);
+            URL.revokeObjectURL(v.src);
+            resolve(dataUrl);
+          } catch (e) {
+            resolve('');
+          }
+        };
+        v.onerror = () => resolve('');
+      });
+    }
+
+    // =========================================================================
+    // SETTINGS (localStorage) - dipakai AlbumStore, Resolver, dan Sidebar
+    // =========================================================================
+    const Settings = {
+      get(key, def) {
+        try {
+          const v = localStorage.getItem('ms_' + key);
+          return v === null ? def : JSON.parse(v);
+        } catch (e) { return def; }
+      },
+      set(key, val) {
+        try { localStorage.setItem('ms_' + key, JSON.stringify(val)); } catch (e) {}
+      }
+    };
+
+    // =========================================================================
+    // PERSISTENT ALBUM STORE (IndexedDB + In-Memory Hydration)
+    // =========================================================================
+    const AlbumStore = {
+      db: null,
+      albums: [],
+      async init() {
+        return new Promise(resolve => {
+          const req = indexedDB.open('media_suite_albums_v1', 1);
+          req.onupgradeneeded = e => {
+            const db = e.target.result;
+            if (!db.objectStoreNames.contains('albums')) {
+              db.createObjectStore('albums', { keyPath: 'id' });
+            }
+          };
+          req.onsuccess = e => {
+            this.db = e.target.result;
+            this.loadAll().then(resolve);
+          };
+          req.onerror = () => resolve();
+        });
+      },
+      async loadAll() {
+        if (!this.db) return;
+        return new Promise(resolve => {
+          const tx = this.db.transaction('albums', 'readonly');
+          const store = tx.objectStore('albums');
+          const req = store.getAll();
+          req.onsuccess = () => {
+            const list = (req.result || []).sort((a, b) => b.createdAt - a.createdAt);
+            list.forEach(alb => {
+              alb.items.forEach(it => {
+                if (it.blob instanceof Blob) {
+                  it.url = URL.createObjectURL(it.blob);
+                }
+              });
+              if (!alb.coverUrl && alb.items[0]?.url && alb.items[0].type === 'image') {
+                alb.coverUrl = alb.items[0].url;
+              }
+            });
+            this.albums = list;
+            renderAllAlbums();
+            resolve();
+          };
+          req.onerror = () => resolve();
+        });
+      },
+      async add(album) {
+        album.items.forEach(it => {
+          if (it.blob instanceof Blob && !it.url) {
+            it.url = URL.createObjectURL(it.blob);
+          }
+        });
+        this.albums.unshift(album);
+        renderAllAlbums();
+        if (!this.db || !Settings.get('autosave', true)) return;
+        try {
+          const tx = this.db.transaction('albums', 'readwrite');
+          tx.objectStore('albums').put(album);
+        } catch (e) {}
+      },
+      async remove(id) {
+        this.albums = this.albums.filter(a => a.id !== id);
+        renderAllAlbums();
+        if (!this.db) return;
+        try {
+          const tx = this.db.transaction('albums', 'readwrite');
+          tx.objectStore('albums').delete(id);
+        } catch (e) {}
+      },
+      byTool(tool) {
+        return this.albums.filter(a => a.tool === tool);
+      }
+    };
+
+    // Render Album Grids for All 4 Tools
+    function renderAllAlbums() {
+      renderGridTool('download', 'dl-albums-grid', 'dl-empty');
+      renderGridTool('upscale', 'up-albums-grid', 'up-empty', () => !document.getElementById('up-workspace').classList.contains('hidden'));
+      renderGridTool('compress', 'cmp-albums-grid', 'cmp-empty', () => !document.getElementById('cmp-workspace').classList.contains('hidden'));
+      renderMp3Albums();
+      lucide.createIcons();
+    }
+
+    function renderGridTool(tool, gridId, emptyId, hasActiveStaging = () => false) {
+      const grid = document.getElementById(gridId);
+      const empty = document.getElementById(emptyId);
+      const list = AlbumStore.byTool(tool);
+
+      if (list.length === 0) {
+        grid.classList.add('hidden');
+        grid.classList.remove('grid');
+        if (!hasActiveStaging()) empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      grid.classList.remove('hidden');
+      grid.classList.add('grid');
+      grid.innerHTML = '';
+
+      list.forEach(alb => {
+        const card = document.createElement('div');
+        card.className = 'pressable relative aspect-[4/5] bg-surface rounded-xl overflow-hidden border border-line cursor-pointer flex flex-col justify-between';
+
+        const mediaItems = alb.items.filter(i => i.type === 'image' || i.type === 'video');
+        const countLabel = alb.items.length > 1 ? `${alb.items.length} Media` : (alb.subBadge || '');
+
+        let thumbHtml = '';
+        if (alb.coverUrl) {
+          thumbHtml = `<img src="${alb.coverUrl}" alt="" class="absolute inset-0 w-full h-full object-cover" loading="lazy" />`;
+        } else if (mediaItems[0]?.type === 'video') {
+          thumbHtml = `<video src="${mediaItems[0].url}#t=0.1" muted playsinline preload="metadata" class="absolute inset-0 w-full h-full object-cover"></video>`;
+        } else {
+          thumbHtml = `<div class="absolute inset-0 flex items-center justify-center bg-surface"><i data-lucide="film" class="w-7 h-7 text-zinc-600"></i></div>`;
+        }
+
+        const isVideo = alb.coverType === 'video' || mediaItems[0]?.type === 'video';
+        const isMulti = alb.items.length > 1;
+
+        card.innerHTML = `
+          ${thumbHtml}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/85 via-black/15 to-black/45"></div>
+          <div class="relative z-10 p-2.5 flex items-center justify-between gap-1">
+            <span class="px-2 py-0.5 rounded-md bg-black/65 backdrop-blur-md text-[10px] font-mono font-semibold text-zinc-100">${alb.badge}</span>
+            <span class="w-6 h-6 rounded-full bg-black/65 backdrop-blur-md flex items-center justify-center text-zinc-100">
+              <i data-lucide="${isMulti ? 'layers' : (isVideo ? 'play' : 'image')}" class="w-3 h-3"></i>
+            </span>
+          </div>
+          <div class="relative z-10 p-2.5">
+            <p class="text-xs font-semibold text-zinc-100 truncate">${alb.title}</p>
+            <p class="text-[10px] font-mono text-zinc-400 mt-0.5">${countLabel}</p>
+          </div>
+        `;
+
+        card.addEventListener('click', () => {
+          hapticTick();
+          if (alb.items.length > 1) {
+            openAlbumModal(alb);
+          } else if (alb.items.length === 1) {
+            openCustomDisplay(alb.items, 0, alb);
+          }
+        });
+
+        grid.appendChild(card);
+      });
+    }
+
+    function renderMp3Albums() {
+      const listEl = document.getElementById('mp3-albums-grid');
+      const empty = document.getElementById('mp3-empty');
+      const list = AlbumStore.byTool('mp3');
+      const hasStaging = !document.getElementById('mp3-workspace').classList.contains('hidden');
+
+      if (list.length === 0) {
+        listEl.classList.add('hidden');
+        listEl.classList.remove('flex');
+        if (!hasStaging) empty.classList.remove('hidden');
+        return;
+      }
+
+      empty.classList.add('hidden');
+      listEl.classList.remove('hidden');
+      listEl.classList.add('flex');
+      listEl.innerHTML = '';
+
+      list.forEach(alb => {
+        const item = alb.items[0];
+        const row = document.createElement('div');
+        row.className = 'pressable px-4 py-3.5 flex items-center justify-between gap-3 cursor-pointer';
+        row.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0 flex-1">
+            <div class="relative w-12 h-12 rounded-xl bg-surface overflow-hidden shrink-0 flex items-center justify-center border border-line">
+              ${alb.coverUrl ? `<img src="${alb.coverUrl}" alt="" class="w-full h-full object-cover opacity-75" />` : ''}
+              <div class="absolute inset-0 flex items-center justify-center bg-black/35">
+                <i data-lucide="play" class="w-4 h-4 text-zinc-100 fill-zinc-100"></i>
+              </div>
+            </div>
+            <div class="min-w-0 flex-1">
+              <p class="text-xs font-semibold text-zinc-100 truncate">${alb.title}</p>
+              <p class="text-[11px] font-mono text-zinc-500 mt-0.5">${alb.badge} • ${alb.subBadge}</p>
+            </div>
+          </div>
+          <button type="button" class="mp3-row-dl pressable w-9 h-9 rounded-xl bg-surface text-zinc-200 flex items-center justify-center shrink-0">
+            <i data-lucide="download" class="w-4 h-4"></i>
+          </button>
+        `;
+
+        row.addEventListener('click', e => {
+          if (e.target.closest('.mp3-row-dl')) {
+            e.stopPropagation();
+            triggerDownload(item.url, item.filename);
+            return;
+          }
+          hapticTick();
+          openCustomDisplay(alb.items, 0, alb);
+        });
+
+        listEl.appendChild(row);
+      });
+    }
+
+    // =========================================================================
+    // ALBUM DETAIL MODAL (See All Media Inside an Album)
+    // =========================================================================
+    const albumModal = document.getElementById('album-modal');
+    const albumClose = document.getElementById('album-close');
+    const albumDelete = document.getElementById('album-delete');
+    const albumModalTitle = document.getElementById('album-modal-title');
+    const albumModalSub = document.getElementById('album-modal-sub');
+    const albumMediaGrid = document.getElementById('album-media-grid');
+    const albumAudioList = document.getElementById('album-audio-list');
+    let currentOpenAlbum = null;
+
+    albumClose.addEventListener('click', () => {
+      hapticTick();
+      albumModal.classList.add('hidden');
+      albumModal.classList.remove('flex');
+      currentOpenAlbum = null;
+    });
+
+    albumDelete.addEventListener('click', async () => {
+      if (!currentOpenAlbum) return;
+      hapticTick();
+      await AlbumStore.remove(currentOpenAlbum.id);
+      albumModal.classList.add('hidden');
+      albumModal.classList.remove('flex');
+      currentOpenAlbum = null;
+      showToast('Dihapus');
+    });
+
+    function openAlbumModal(album) {
+      currentOpenAlbum = album;
+      albumModalTitle.textContent = album.title;
+      albumModalSub.textContent = `${album.badge} • ${album.items.length} Media`;
+      albumMediaGrid.innerHTML = '';
+      albumAudioList.innerHTML = '';
+
+      const visualItems = album.items.filter(i => i.type === 'image' || i.type === 'video');
+      const audioItems = album.items.filter(i => i.type === 'audio');
+
+      visualItems.forEach(item => {
+        const globalIdx = album.items.indexOf(item);
+        const tile = document.createElement('div');
+        tile.className = 'pressable relative aspect-[4/5] bg-surface rounded-xl overflow-hidden border border-line cursor-pointer';
+
+        const mediaTag = item.type === 'video'
+          ? `<video src="${item.url}#t=0.1" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>`
+          : `<img src="${item.url}" alt="" class="w-full h-full object-cover" loading="lazy" />`;
+
+        tile.innerHTML = `
+          ${mediaTag}
+          <div class="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/30"></div>
+          <div class="absolute top-2 left-2 px-2 py-0.5 rounded bg-black/65 backdrop-blur-md text-[10px] font-mono text-zinc-200">${item.label}</div>
+          ${item.type === 'video' ? `
+            <div class="absolute inset-0 flex items-center justify-center pointer-events-none">
+              <div class="w-10 h-10 rounded-full bg-black/55 backdrop-blur-md flex items-center justify-center text-white">
+                <i data-lucide="play" class="w-4 h-4 fill-white"></i>
+              </div>
+            </div>
+          ` : ''}
+          <button type="button" class="tile-dl pressable absolute bottom-2 right-2 w-8 h-8 rounded-lg bg-zinc-100 text-zinc-950 flex items-center justify-center">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+          </button>
+        `;
+
+        tile.addEventListener('click', e => {
+          if (e.target.closest('.tile-dl')) {
+            e.stopPropagation();
+            triggerDownload(item.url, item.filename);
+            return;
+          }
+          hapticTick();
+          openCustomDisplay(album.items, globalIdx, album);
+        });
+
+        albumMediaGrid.appendChild(tile);
+      });
+
+      audioItems.forEach(item => {
+        const globalIdx = album.items.indexOf(item);
+        const row = document.createElement('div');
+        row.className = 'pressable py-3.5 flex items-center justify-between gap-3 cursor-pointer';
+        row.innerHTML = `
+          <div class="flex items-center gap-3 min-w-0">
+            <div class="w-10 h-10 rounded-xl bg-surface flex items-center justify-center text-zinc-200 shrink-0">
+              <i data-lucide="music" class="w-4 h-4"></i>
+            </div>
+            <div class="min-w-0">
+              <p class="text-xs font-semibold text-zinc-100 truncate">${item.label}</p>
+              <p class="text-[11px] font-mono text-zinc-500">${item.meta || 'MP3'}</p>
+            </div>
+          </div>
+          <button type="button" class="audio-dl pressable h-9 px-3 rounded-lg bg-zinc-100 text-zinc-950 text-xs font-semibold flex items-center gap-1.5 shrink-0">
+            <i data-lucide="download" class="w-3.5 h-3.5"></i>
+            <span>Unduh</span>
+          </button>
+        `;
+        row.addEventListener('click', e => {
+          if (e.target.closest('.audio-dl')) {
+            e.stopPropagation();
+            triggerDownload(item.url, item.filename);
+            return;
+          }
+          hapticTick();
+          openCustomDisplay(album.items, globalIdx, album);
+        });
+        albumAudioList.appendChild(row);
+      });
+
+      albumModal.classList.remove('hidden');
+      albumModal.classList.add('flex');
+      lucide.createIcons();
+    }
+
+    // =========================================================================
+    // CUSTOM MEDIA DISPLAY & PLAYER (Zero Native Browser Controls)
+    // =========================================================================
+    const customDisplay = document.getElementById('custom-display');
+    const cdClose = document.getElementById('cd-close');
+    const cdCounter = document.getElementById('cd-counter');
+    const cdResPills = document.getElementById('cd-res-pills');
+    const cdDownload = document.getElementById('cd-download');
+    const cdStage = document.getElementById('cd-stage');
+    const cdImg = document.getElementById('cd-img');
+    const cdVideoWrap = document.getElementById('cd-video-wrap');
+    const cdVideo = document.getElementById('cd-video');
+    const cdPlayIndicator = document.getElementById('cd-play-indicator');
+    const cdPlayIcon = document.getElementById('cd-play-icon');
+    const cdAudioWrap = document.getElementById('cd-audio-wrap');
+    const cdAudioTitle = document.getElementById('cd-audio-title');
+    const cdAudioMeta = document.getElementById('cd-audio-meta');
+    const cdTransport = document.getElementById('cd-transport');
+    const cdScrubber = document.getElementById('cd-scrubber');
+    const cdProgress = document.getElementById('cd-progress');
+    const cdThumb = document.getElementById('cd-thumb');
+    const cdBtnPlay = document.getElementById('cd-btn-play');
+    const cdBtnPlayIcon = document.getElementById('cd-btn-play-icon');
+    const cdTime = document.getElementById('cd-time');
+    const cdVideoExtras = document.getElementById('cd-video-extras');
+    const cdBtnLoop = document.getElementById('cd-btn-loop');
+    const cdBtnSpeed = document.getElementById('cd-btn-speed');
+    const cdBtnMute = document.getElementById('cd-btn-mute');
+    const cdBtnVolUp = document.getElementById('cd-btn-volup');
+    const cdBtnVolDown = document.getElementById('cd-btn-voldown');
+    const cdStrip = document.getElementById('cd-strip');
+
+    const cdAudioEl = new Audio();
+    let cdItems = [];
+    let cdIndex = 0;
+    let cdActiveUrl = '';
+    let cdActiveFilename = '';
+    let cdLoop = true;
+    let cdSpeeds = [1, 1.5, 2];
+    let cdSpeedIdx = 0;
+
+    // Image Zoom & Swipe State
+    let imgScale = 1, imgX = 0, imgY = 0;
+    let startDist = 0, startScale = 1;
+    let dragStartX = 0, dragStartY = 0, lastTap = 0, isDragging = false;
+
+    function resetImgTransform() {
+      imgScale = 1;
+      imgX = 0;
+      imgY = 0;
+      cdImg.style.transform = 'translate3d(0px, 0px, 0) scale(1)';
+    }
+
+    function applyImgTransform() {
+      cdImg.style.transform = `translate3d(${imgX}px, ${imgY}px, 0) scale(${imgScale})`;
+    }
+
+    function openCustomDisplay(items, index = 0, album = null) {
+      cdItems = items;
+      cdIndex = index;
+      customDisplay.classList.remove('hidden');
+      customDisplay.classList.add('flex');
+      renderCdStrip();
+      loadCdItem(cdIndex);
+    }
+
+    function closeCustomDisplay() {
+      hapticTick();
+      cdVideo.pause();
+      cdVideo.removeAttribute('src');
+      cdAudioEl.pause();
+      cdAudioEl.removeAttribute('src');
+      customDisplay.classList.add('hidden');
+      customDisplay.classList.remove('flex');
+    }
+
+    cdClose.addEventListener('click', closeCustomDisplay);
+
+    function renderCdStrip() {
+      if (cdItems.length <= 1) {
+        cdStrip.classList.add('hidden');
+        cdStrip.classList.remove('flex');
+        return;
+      }
+      cdStrip.classList.remove('hidden');
+      cdStrip.classList.add('flex');
+      cdStrip.innerHTML = '';
+
+      cdItems.forEach((it, idx) => {
+        const btn = document.createElement('button');
+        btn.type = 'button';
+        const active = idx === cdIndex;
+        btn.className = `pressable relative w-11 h-11 rounded-lg overflow-hidden shrink-0 border ${active ? 'border-zinc-100' : 'border-white/15 opacity-55'} bg-surface flex items-center justify-center`;
+        if (it.type === 'image') {
+          btn.innerHTML = `<img src="${it.url}" alt="" class="w-full h-full object-cover" />`;
+        } else if (it.type === 'video') {
+          btn.innerHTML = `<video src="${it.url}#t=0.1" muted playsinline preload="metadata" class="w-full h-full object-cover"></video>`;
+        } else {
+          btn.innerHTML = `<i data-lucide="music" class="w-4 h-4 text-zinc-200"></i>`;
+        }
+        btn.addEventListener('click', () => {
+          hapticTick();
+          loadCdItem(idx);
+        });
+        cdStrip.appendChild(btn);
+      });
+      lucide.createIcons();
+    }
+
+    function loadCdItem(idx) {
+      cdIndex = idx;
+      const item = cdItems[idx];
+      if (!item) return;
+
+      cdVideo.pause();
+      cdAudioEl.pause();
+      resetImgTransform();
+
+      cdCounter.textContent = `${idx + 1} / ${cdItems.length}`;
+      cdActiveUrl = item.url;
+      cdActiveFilename = item.filename;
+
+      // Render Resolution Switcher Pills if item has multiple resolutions
+      cdResPills.innerHTML = '';
+      if (item.altUrls && item.altUrls.length > 1) {
+        item.altUrls.forEach((alt, aIdx) => {
+          const pill = document.createElement('button');
+          pill.type = 'button';
+          const isCur = alt.url === cdActiveUrl;
+          pill.className = `px-2.5 py-1 rounded-full text-[11px] font-mono ${isCur ? 'bg-zinc-100 text-zinc-950 font-semibold' : 'bg-white/10 text-zinc-300'}`;
+          pill.textContent = alt.label;
+          pill.addEventListener('click', () => {
+            hapticTick();
+            cdActiveUrl = alt.url;
+            cdActiveFilename = alt.filename;
+            if (item.type === 'video') {
+              const curT = cdVideo.currentTime;
+              cdVideo.src = alt.url;
+              cdVideo.currentTime = curT;
+              cdVideo.play().catch(() => {});
+            }
+            Array.from(cdResPills.children).forEach((c, cIdx) => {
+              c.className = `px-2.5 py-1 rounded-full text-[11px] font-mono ${cIdx === aIdx ? 'bg-zinc-100 text-zinc-950 font-semibold' : 'bg-white/10 text-zinc-300'}`;
+            });
+          });
+          cdResPills.appendChild(pill);
+        });
+      }
+
+      cdImg.classList.add('hidden');
+      cdVideoWrap.classList.add('hidden');
+      cdAudioWrap.classList.add('hidden');
+      cdTransport.classList.add('hidden');
+
+      if (item.type === 'image') {
+        cdImg.src = item.url;
+        cdImg.classList.remove('hidden');
+      } else if (item.type === 'video') {
+        cdVideoWrap.classList.remove('hidden');
+        cdTransport.classList.remove('hidden');
+        cdTransport.classList.add('flex');
+        cdVideoExtras.classList.remove('hidden');
+        cdVideoExtras.classList.add('flex');
+
+        cdVideo.src = cdActiveUrl;
+        cdVideo.loop = cdLoop;
+        cdVideo.playbackRate = cdSpeeds[cdSpeedIdx];
+        cdVideo.play().catch(() => {});
+        updatePlayIcon(true);
+      } else if (item.type === 'audio') {
+        cdAudioWrap.classList.remove('hidden');
+        cdAudioWrap.classList.add('flex');
+        cdTransport.classList.remove('hidden');
+        cdTransport.classList.add('flex');
+        cdVideoExtras.classList.add('hidden');
+
+        cdAudioTitle.textContent = item.label || item.filename;
+        cdAudioMeta.textContent = item.meta || 'MP3';
+        cdAudioEl.src = cdActiveUrl;
+        cdAudioEl.play().catch(() => {});
+        updatePlayIcon(true);
+      }
+
+      renderCdStrip();
+    }
+
+    cdDownload.addEventListener('click', () => {
+      if (cdActiveUrl) triggerDownload(cdActiveUrl, cdActiveFilename || `media_${Date.now()}`);
+    });
+
+    function getActivePlayer() {
+      const item = cdItems[cdIndex];
+      if (!item) return null;
+      return item.type === 'video' ? cdVideo : (item.type === 'audio' ? cdAudioEl : null);
+    }
+
+    function updatePlayIcon(playing) {
+      cdBtnPlayIcon.setAttribute('data-lucide', playing ? 'pause' : 'play');
+      lucide.createIcons();
+    }
+
+    function flashCenterIndicator(playing) {
+      cdPlayIcon.setAttribute('data-lucide', playing ? 'play' : 'pause');
+      lucide.createIcons();
+      cdPlayIndicator.classList.remove('opacity-0');
+      cdPlayIndicator.classList.add('opacity-100');
+      setTimeout(() => {
+        cdPlayIndicator.classList.add('opacity-0');
+        cdPlayIndicator.classList.remove('opacity-100');
+      }, 450);
+    }
+
+    function toggleMediaPlayback() {
+      const player = getActivePlayer();
+      if (!player) return;
+      hapticTick(500, 0.015);
+      if (player.paused) {
+        player.play().catch(() => {});
+        updatePlayIcon(true);
+        if (player === cdVideo) flashCenterIndicator(true);
+      } else {
+        player.pause();
+        updatePlayIcon(false);
+        if (player === cdVideo) flashCenterIndicator(false);
+      }
+    }
+
+    cdBtnPlay.addEventListener('click', toggleMediaPlayback);
+    cdVideo.addEventListener('click', toggleMediaPlayback);
+
+    function syncTransportProgress() {
+      const player = getActivePlayer();
+      if (!player || !player.duration) return;
+      const pct = Math.min(100, (player.currentTime / player.duration) * 100);
+      cdProgress.style.width = pct + '%';
+      cdThumb.style.left = pct + '%';
+      cdTime.textContent = `${formatTime(player.currentTime)} / ${formatTime(player.duration)}`;
+    }
+
+    cdVideo.addEventListener('timeupdate', syncTransportProgress);
+    cdAudioEl.addEventListener('timeupdate', syncTransportProgress);
+    cdAudioEl.addEventListener('ended', () => updatePlayIcon(false));
+
+    // Custom Scrubber Seek
+    function seekFromEvent(e) {
+      const player = getActivePlayer();
+      if (!player || !player.duration) return;
+      const rect = cdScrubber.getBoundingClientRect();
+      const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+      const ratio = Math.max(0, Math.min(1, (clientX - rect.left) / rect.width));
+      player.currentTime = ratio * player.duration;
+      syncTransportProgress();
+    }
+    cdScrubber.addEventListener('click', seekFromEvent);
+    cdScrubber.addEventListener('touchmove', seekFromEvent, { passive: true });
+
+    // Custom Loop, Speed
+    cdBtnLoop.addEventListener('click', () => {
+      hapticTick();
+      cdLoop = !cdLoop;
+      cdVideo.loop = cdLoop;
+      cdBtnLoop.className = cdLoop
+        ? 'pressable px-2.5 py-1 rounded-lg bg-zinc-100 text-zinc-950 text-[11px] font-mono font-semibold'
+        : 'pressable px-2.5 py-1 rounded-lg bg-white/10 text-zinc-300 text-[11px] font-mono';
+    });
+
+    cdBtnSpeed.addEventListener('click', () => {
+      hapticTick();
+      cdSpeedIdx = (cdSpeedIdx + 1) % cdSpeeds.length;
+      const spd = cdSpeeds[cdSpeedIdx];
+      cdVideo.playbackRate = spd;
+      cdBtnSpeed.textContent = spd + 'x';
+    });
+
+    // Custom Volume (+ / - / Mute) - berlaku untuk video & audio
+    let cdVolume = 1;
+    let cdMuted = false;
+
+    function applyVolume() {
+      [cdVideo, cdAudioEl].forEach(p => {
+        try { p.volume = cdVolume; } catch (e) {}
+        p.muted = cdMuted;
+      });
+      const icon = (cdMuted || cdVolume === 0) ? 'volume-x' : (cdVolume < 0.5 ? 'volume-1' : 'volume-2');
+      cdBtnMute.innerHTML = `<i data-lucide="${icon}" class="w-4 h-4"></i>`;
+      lucide.createIcons();
+    }
+
+    function stepVolume(delta) {
+      hapticTick();
+      cdVolume = Math.round(Math.max(0, Math.min(1, cdVolume + delta)) * 10) / 10;
+      if (delta > 0) cdMuted = false;
+      applyVolume();
+      showToast(cdMuted || cdVolume === 0 ? 'Mute' : 'Volume ' + Math.round(cdVolume * 100) + '%');
+    }
+
+    cdBtnVolUp.addEventListener('click', () => stepVolume(0.1));
+    cdBtnVolDown.addEventListener('click', () => stepVolume(-0.1));
+
+    cdBtnMute.addEventListener('click', () => {
+      hapticTick();
+      cdMuted = !cdMuted;
+      if (!cdMuted && cdVolume === 0) cdVolume = 0.5;
+      applyVolume();
+      showToast(cdMuted ? 'Mute' : 'Volume ' + Math.round(cdVolume * 100) + '%');
+    });
+
+    applyVolume();
+
+    // Touch Gestures on Stage (Double-tap Zoom, Pinch Zoom, Pan, Swipe Album Items)
+    cdStage.addEventListener('touchstart', e => {
+      if (e.touches.length === 2 && cdItems[cdIndex]?.type === 'image') {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        startDist = Math.hypot(dx, dy);
+        startScale = imgScale;
+      } else if (e.touches.length === 1) {
+        const now = Date.now();
+        if (now - lastTap < 260 && cdItems[cdIndex]?.type === 'image') {
+          imgScale = imgScale > 1 ? 1 : 2.2;
+          imgX = 0;
+          imgY = 0;
+          applyImgTransform();
+        }
+        lastTap = now;
+        isDragging = true;
+        dragStartX = e.touches[0].clientX - imgX;
+        dragStartY = e.touches[0].clientY - imgY;
+      }
+    }, { passive: true });
+
+    cdStage.addEventListener('touchmove', e => {
+      if (e.touches.length === 2 && cdItems[cdIndex]?.type === 'image') {
+        const dx = e.touches[0].clientX - e.touches[1].clientX;
+        const dy = e.touches[0].clientY - e.touches[1].clientY;
+        const dist = Math.hypot(dx, dy);
+        imgScale = Math.max(1, Math.min(4, startScale * (dist / (startDist || 1))));
+        if (imgScale === 1) { imgX = 0; imgY = 0; }
+        applyImgTransform();
+      } else if (e.touches.length === 1 && isDragging && imgScale > 1) {
+        imgX = e.touches[0].clientX - dragStartX;
+        imgY = e.touches[0].clientY - dragStartY;
+        applyImgTransform();
+      }
+    }, { passive: true });
+
+    cdStage.addEventListener('touchend', e => {
+      if (isDragging && imgScale === 1 && e.changedTouches.length === 1 && cdItems.length > 1) {
+        const diffX = e.changedTouches[0].clientX - dragStartX;
+        if (Math.abs(diffX) > 65) {
+          if (diffX < 0 && cdIndex < cdItems.length - 1) {
+            hapticTick();
+            loadCdItem(cdIndex + 1);
+          } else if (diffX > 0 && cdIndex > 0) {
+            hapticTick();
+            loadCdItem(cdIndex - 1);
+          }
+        }
+      }
+      isDragging = false;
+    });
+
+    // =========================================================================
+    // BOTTOM NAVIGATION + DOCK SWITCHING
+    // =========================================================================
+    const navBtns = document.querySelectorAll('.nav-btn');
+    const sections = document.querySelectorAll('.view-section');
+    const docks = document.querySelectorAll('.tool-dock');
+
+    navBtns.forEach(btn => {
+      btn.addEventListener('click', () => {
+        hapticTick(480, 0.015);
+        const target = btn.dataset.tab;
+        navBtns.forEach(b => {
+          b.classList.remove('text-zinc-100');
+          b.classList.add('text-zinc-500');
+          b.querySelector('span').classList.replace('font-semibold', 'font-medium');
+        });
+        btn.classList.remove('text-zinc-500');
+        btn.classList.add('text-zinc-100');
+        btn.querySelector('span').classList.replace('font-medium', 'font-semibold');
+
+        sections.forEach(sec => sec.classList.remove('active'));
+        document.getElementById(`view-${target}`).classList.add('active');
+
+        docks.forEach(d => d.classList.add('hidden'));
+        document.getElementById(`dock-${target}`).classList.remove('hidden');
+        syncBottomPadding();
+      });
+    });
+
+    // =========================================================================
+    // TOOL 1: MEDIA DOWNLOADER (Saves Every Result as Persistent Album)
+    // =========================================================================
+    const dlUrlInput = document.getElementById('dl-url');
+    const dlClearBtn = document.getElementById('dl-clear');
+    const dlPasteBtn = document.getElementById('dl-paste');
+    const dlFetchBtn = document.getElementById('dl-fetch');
+    const dlStatus = document.getElementById('dl-status');
+    const dlLoader = document.getElementById('dl-loader');
+
+    function detectPlatform(url) {
+      const u = url.toLowerCase();
+      document.querySelectorAll('.plat-tag').forEach(el => {
+        el.classList.remove('bg-zinc-100', 'text-zinc-950');
+      });
+      let plat = null;
+      if (u.includes('youtube.com') || u.includes('youtu.be')) plat = 'youtube';
+      else if (u.includes('tiktok.com')) plat = 'tiktok';
+      else if (u.includes('instagram.com')) plat = 'instagram';
+      else if (u.includes('twitter.com') || u.includes('x.com')) plat = 'twitter';
+      else if (u.includes('bilibili.') || u.includes('bstation')) plat = 'bstation';
+
+      if (plat) {
+        const tag = document.querySelector(`.plat-tag[data-plat="${plat}"]`);
+        if (tag) tag.classList.add('bg-zinc-100', 'text-zinc-950');
+      }
+      return plat;
+    }
+
+    dlUrlInput.addEventListener('input', () => {
+      const val = dlUrlInput.value.trim();
+      dlClearBtn.classList.toggle('hidden', !val);
+      detectPlatform(val);
+    });
+
+    dlClearBtn.addEventListener('click', () => {
+      hapticTick();
+      dlUrlInput.value = '';
+      dlClearBtn.classList.add('hidden');
+      detectPlatform('');
+      dlStatus.textContent = '';
+    });
+
+    dlPasteBtn.addEventListener('click', async () => {
+      hapticTick();
+      try {
+        const text = await navigator.clipboard.readText();
+        if (text) {
+          dlUrlInput.value = text.trim();
+          dlClearBtn.classList.remove('hidden');
+          detectPlatform(text);
+          fetchMedia();
+        }
+      } catch (e) {
+        dlUrlInput.focus();
+        showToast('Tempel manual');
+      }
+    });
+
+    dlFetchBtn.addEventListener('click', fetchMedia);
+    dlUrlInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') fetchMedia();
+    });
+
+    // ---- Resolver: X / Twitter (vxtwitter, CORS-friendly) ----
+    async function resolveTwitter(rawUrl) {
+      const m = rawUrl.match(/(?:twitter|x)\.com\/([^\/?#]+)\/status\/(\d+)/i);
+      if (!m) return null;
+      const r = await fetch(`https://api.vxtwitter.com/${m[1]}/status/${m[2]}`);
+      if (!r.ok) return null;
+      const j = await r.json();
+      const media = j.media_extended || [];
+      if (!media.length) return null;
+      return {
+        filename: `X_${m[2]}`,
+        picker: media.map(x => ({
+          type: x.type === 'image' ? 'photo' : 'video',
+          url: x.url
+        }))
+      };
+    }
+
+    // ---- Resolver: Cobalt v10 (IG, YouTube, Bstation, dll) ----
+    async function resolveCobalt(rawUrl) {
+      const endpoints = [];
+      const custom = (Settings.get('cobaltUrl', '') || '').trim();
+      const key = (Settings.get('cobaltKey', '') || '').trim();
+      if (custom) endpoints.push({ ep: custom, key });
+      endpoints.push({ ep: 'https://api.cobalt.tools/', key: '' });
+
+      for (const { ep, key: apiKey } of endpoints) {
+        try {
+          const headers = {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json'
+          };
+          if (apiKey) headers['Authorization'] = `Api-Key ${apiKey}`;
+          const resp = await fetch(ep, {
+            method: 'POST',
+            headers,
+            body: JSON.stringify({
+              url: rawUrl,
+              videoQuality: '1080',
+              downloadMode: 'auto',
+              filenameStyle: 'basic'
+            })
+          });
+          const data = await resp.json().catch(() => null);
+          if (data && data.status !== 'error' && (data.url || (data.picker && data.picker.length))) {
+            return data;
+          }
+        } catch (e) {}
+      }
+      return null;
+    }
+
+    async function fetchMedia() {
+      const rawUrl = dlUrlInput.value.trim();
+      if (!rawUrl) return;
+      hapticTick();
+
+      const platform = detectPlatform(rawUrl);
+      const platLabel = platform ? platform.toUpperCase() : 'MEDIA';
+      dlLoader.classList.remove('hidden');
+      dlStatus.textContent = 'Memuat...';
+
+      try {
+        // 1. Direct Media URL Check
+        if (/\.(mp4|webm|mov)(\?.*)?$/i.test(rawUrl)) {
+          const fname = `media_${Date.now()}.mp4`;
+          const album = {
+            id: 'alb_' + Date.now(),
+            tool: 'download',
+            title: rawUrl.split('/').pop().split('?')[0] || 'Video MP4',
+            badge: 'MP4',
+            subBadge: 'HD',
+            createdAt: Date.now(),
+            coverUrl: '',
+            coverType: 'video',
+            items: [{
+              id: 'it_1',
+              type: 'video',
+              label: 'Original MP4',
+              meta: 'HD',
+              url: rawUrl,
+              blob: null,
+              filename: fname
+            }]
+          };
+          await AlbumStore.add(album);
+          finishFetch(album);
+          return;
+        }
+        if (/\.(jpg|jpeg|png|webp)(\?.*)?$/i.test(rawUrl)) {
+          const fname = `photo_${Date.now()}.jpg`;
+          const album = {
+            id: 'alb_' + Date.now(),
+            tool: 'download',
+            title: rawUrl.split('/').pop().split('?')[0] || 'Foto',
+            badge: 'IMG',
+            subBadge: 'HD',
+            createdAt: Date.now(),
+            coverUrl: rawUrl,
+            coverType: 'image',
+            items: [{
+              id: 'it_1',
+              type: 'image',
+              label: 'Original',
+              meta: 'HD',
+              url: rawUrl,
+              blob: null,
+              filename: fname
+            }]
+          };
+          await AlbumStore.add(album);
+          finishFetch(album);
+          return;
+        }
+
+        // 2. TikTok Resolver (TikWM -> Saved as Single Album with All Slides/Video/Audio)
+        if (platform === 'tiktok') {
+          const apiUrl = `https://www.tikwm.com/api/?url=${encodeURIComponent(rawUrl)}&hd=1`;
+          const res = await fetch(apiUrl);
+          const json = await res.json();
+          if (json && json.code === 0 && json.data) {
+            const d = json.data;
+            const items = [];
+
+            if (d.images && d.images.length > 0) {
+              d.images.forEach((imgUrl, idx) => {
+                items.push({
+                  id: `tt_img_${idx}`,
+                  type: 'image',
+                  label: `Foto ${idx + 1}`,
+                  meta: 'JPG',
+                  url: imgUrl,
+                  blob: null,
+                  filename: `tiktok_${d.id}_${idx + 1}.jpg`
+                });
+              });
+              if (d.music) {
+                items.push({
+                  id: 'tt_aud',
+                  type: 'audio',
+                  label: 'Audio MP3',
+                  meta: 'MP3',
+                  url: d.music,
+                  blob: null,
+                  filename: `tiktok_${d.id}.mp3`
+                });
+              }
+
+              const album = {
+                id: 'alb_' + Date.now(),
+                tool: 'download',
+                title: d.title || 'TikTok Album',
+                badge: 'TikTok',
+                subBadge: `${items.length} Media`,
+                createdAt: Date.now(),
+                coverUrl: d.images[0] || d.cover || '',
+                coverType: 'image',
+                items
+              };
+              await AlbumStore.add(album);
+              finishFetch(album);
+              return;
+            }
+
+            // Video Mode with Resolution Options
+            const hdUrl = d.hdplay || d.play;
+            const altUrls = [];
+            if (d.hdplay) {
+              altUrls.push({
+                label: '1080p HD',
+                meta: d.hd_size ? formatBytes(d.hd_size) : 'No WM',
+                url: d.hdplay,
+                filename: `tiktok_hd_${d.id}.mp4`
+              });
+            }
+            if (d.play) {
+              altUrls.push({
+                label: '720p SD',
+                meta: d.size ? formatBytes(d.size) : 'No WM',
+                url: d.play,
+                filename: `tiktok_sd_${d.id}.mp4`
+              });
+            }
+
+            items.push({
+              id: 'tt_vid',
+              type: 'video',
+              label: d.hdplay ? '1080p HD' : '720p SD',
+              meta: 'No WM',
+              url: hdUrl,
+              blob: null,
+              filename: `tiktok_${d.id}.mp4`,
+              altUrls
+            });
+
+            if (d.music) {
+              items.push({
+                id: 'tt_aud',
+                type: 'audio',
+                label: 'Audio MP3',
+                meta: 'MP3',
+                url: d.music,
+                blob: null,
+                filename: `tiktok_audio_${d.id}.mp3`
+              });
+            }
+
+            const album = {
+              id: 'alb_' + Date.now(),
+              tool: 'download',
+              title: d.title || 'TikTok Video',
+              badge: 'TikTok',
+              subBadge: items.length > 1 ? 'Video + MP3' : 'MP4',
+              createdAt: Date.now(),
+              coverUrl: d.cover || '',
+              coverType: 'video',
+              items
+            };
+            await AlbumStore.add(album);
+            finishFetch(album);
+            return;
+          }
+        }
+
+        // 3. Universal Resolver (IG, X, Bstation, YouTube)
+        let resolvedData = null;
+        if (platform === 'twitter') {
+          try { resolvedData = await resolveTwitter(rawUrl); } catch (e) {}
+        }
+        if (!resolvedData) resolvedData = await resolveCobalt(rawUrl);
+
+        if (resolvedData) {
+          const items = [];
+          let coverUrl = '';
+          let coverType = 'video';
+
+          if (resolvedData.picker && resolvedData.picker.length > 0) {
+            resolvedData.picker.forEach((p, idx) => {
+              const isVid = p.type === 'video' || p.type === 'gif';
+              if (!coverUrl && !isVid) {
+                coverUrl = p.url;
+                coverType = 'image';
+              }
+              items.push({
+                id: `cb_${idx}`,
+                type: isVid ? 'video' : 'image',
+                label: `${isVid ? 'Video' : 'Foto'} ${idx + 1}`,
+                meta: isVid ? 'MP4' : 'JPG',
+                url: p.url,
+                blob: null,
+                filename: `media_${idx + 1}.${isVid ? 'mp4' : 'jpg'}`
+              });
+            });
+            if (resolvedData.audio) {
+              items.push({
+                id: 'cb_aud',
+                type: 'audio',
+                label: 'Audio MP3',
+                meta: 'MP3',
+                url: resolvedData.audio,
+                blob: null,
+                filename: `media_audio_${Date.now()}.mp3`
+              });
+            }
+          } else if (resolvedData.url) {
+            const isAudio = resolvedData.url.includes('.mp3') || resolvedData.url.includes('audio') || /\.(mp3|m4a|opus|ogg|wav)$/i.test(resolvedData.filename || '');
+            coverType = isAudio ? 'audio' : 'video';
+            items.push({
+              id: 'cb_0',
+              type: isAudio ? 'audio' : 'video',
+              label: isAudio ? 'Audio MP3' : '1080p HD',
+              meta: 'Original',
+              url: resolvedData.url,
+              blob: null,
+              filename: resolvedData.filename || `media_${Date.now()}.${isAudio ? 'mp3' : 'mp4'}`,
+              altUrls: isAudio ? [] : [
+                { label: '1080p HD', meta: 'Original', url: resolvedData.url, filename: `media_hd_${Date.now()}.mp4` },
+                { label: '720p', meta: 'Hemat', url: resolvedData.url, filename: `media_720p_${Date.now()}.mp4` }
+              ]
+            });
+          }
+
+          if (items.length > 0) {
+            const album = {
+              id: 'alb_' + Date.now(),
+              tool: 'download',
+              title: resolvedData.filename || platLabel,
+              badge: platLabel,
+              subBadge: `${items.length} Media`,
+              createdAt: Date.now(),
+              coverUrl,
+              coverType,
+              items
+            };
+            await AlbumStore.add(album);
+            finishFetch(album);
+            return;
+          }
+        }
+
+        throw new Error('Gagal');
+      } catch (err) {
+        dlLoader.classList.add('hidden');
+        dlStatus.textContent = 'Gagal';
+        showToast('Gagal. Cek Menu > Resolver');
+      }
+    }
+
+    function finishFetch(album) {
+      dlLoader.classList.add('hidden');
+      dlStatus.textContent = 'Tersimpan';
+      dlUrlInput.value = '';
+      dlClearBtn.classList.add('hidden');
+      detectPlatform('');
+      showToast('Album Tersimpan');
+
+      if (album.items.length > 1) {
+        openAlbumModal(album);
+      } else if (album.items.length === 1) {
+        openCustomDisplay(album.items, 0, album);
+      }
+    }
+
+    // =========================================================================
+    // TOOL 2: UPSCALE FOTO / VIDEO (Saves Result as Persistent Album)
+    // =========================================================================
+    const upInput = document.getElementById('up-input');
+    const upPick = document.getElementById('up-pick');
+    const upFilename = document.getElementById('up-filename');
+    const upWorkspace = document.getElementById('up-workspace');
+    const upCancel = document.getElementById('up-cancel');
+    const upCanvas = document.getElementById('up-canvas');
+    const upVideo = document.getElementById('up-video');
+    const upDimBefore = document.getElementById('up-dim-before');
+    const upDimAfter = document.getElementById('up-dim-after');
+    const upRun = document.getElementById('up-run');
+    const upProgressWrap = document.getElementById('up-progress-wrap');
+    const upProgressBar = document.getElementById('up-progress-bar');
+    const upProgressPct = document.getElementById('up-progress-pct');
+
+    let upFile = null;
+    let upScale = 2;
+    let upOrigW = 0, upOrigH = 0;
+
+    upPick.addEventListener('click', () => upInput.click());
+
+    upCancel.addEventListener('click', () => {
+      hapticTick();
+      upFile = null;
+      upInput.value = '';
+      upFilename.textContent = 'Foto / Video';
+      upWorkspace.classList.add('hidden');
+      upRun.classList.add('hidden');
+      renderAllAlbums();
+    });
+
+    document.querySelectorAll('.up-scale-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        hapticTick();
+        upScale = parseInt(btn.dataset.scale, 10);
+        document.querySelectorAll('.up-scale-btn').forEach(b => {
+          b.classList.remove('bg-zinc-100', 'text-zinc-950');
+          b.classList.add('text-zinc-400');
+        });
+        btn.classList.add('bg-zinc-100', 'text-zinc-950');
+        btn.classList.remove('text-zinc-400');
+        updateUpscaleDims();
+      });
+    });
+
+    function getTargetUpscaleDims(w, h, scale) {
+      let tw = w * scale;
+      let th = h * scale;
+      const maxDim = 4096;
+      if (tw > maxDim || th > maxDim) {
+        const ratio = Math.min(maxDim / tw, maxDim / th);
+        tw = Math.round(tw * ratio);
+        th = Math.round(th * ratio);
+      }
+      return { tw, th };
+    }
+
+    function updateUpscaleDims() {
+      if (!upOrigW || !upOrigH) return;
+      const { tw, th } = getTargetUpscaleDims(upOrigW, upOrigH, upScale);
+      upDimBefore.textContent = `${upOrigW} × ${upOrigH}`;
+      upDimAfter.textContent = `${tw} × ${th}`;
+    }
+
+    upInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      hapticTick();
+      upFile = file;
+      upFilename.textContent = file.name;
+      document.getElementById('up-empty').classList.add('hidden');
+      upWorkspace.classList.remove('hidden');
+      upRun.classList.remove('hidden');
+      upProgressWrap.classList.add('hidden');
+
+      if (file.type.startsWith('image/')) {
+        upVideo.classList.add('hidden');
+        upCanvas.classList.remove('hidden');
+        const img = new Image();
+        img.onload = () => {
+          upOrigW = img.naturalWidth;
+          upOrigH = img.naturalHeight;
+          upCanvas.width = upOrigW;
+          upCanvas.height = upOrigH;
+          upCanvas.getContext('2d').drawImage(img, 0, 0);
+          updateUpscaleDims();
+        };
+        img.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith('video/')) {
+        upCanvas.classList.add('hidden');
+        upVideo.classList.remove('hidden');
+        upVideo.src = URL.createObjectURL(file);
+        upVideo.play().catch(() => {});
+        upVideo.onloadedmetadata = () => {
+          upOrigW = upVideo.videoWidth;
+          upOrigH = upVideo.videoHeight;
+          updateUpscaleDims();
+        };
+      }
+    });
+
+    function applySharpen(ctx, w, h, mix = 0.32) {
+      const imgData = ctx.getImageData(0, 0, w, h);
+      const data = imgData.data;
+      const copy = new Uint8ClampedArray(data);
+      const kernel = [0, -1, 0, -1, 5, -1, 0, -1, 0];
+
+      for (let y = 1; y < h - 1; y++) {
+        for (let x = 1; x < w - 1; x++) {
+          const idx = (y * w + x) * 4;
+          for (let c = 0; c < 3; c++) {
+            let sum = 0;
+            let k = 0;
+            for (let ky = -1; ky <= 1; ky++) {
+              for (let kx = -1; kx <= 1; kx++) {
+                const pIdx = ((y + ky) * w + (x + kx)) * 4 + c;
+                sum += copy[pIdx] * kernel[k++];
+              }
+            }
+            const sharpened = Math.min(255, Math.max(0, sum));
+            data[idx + c] = copy[idx + c] * (1 - mix) + sharpened * mix;
+          }
+        }
+      }
+      ctx.putImageData(imgData, 0, 0);
+    }
+
+    upRun.addEventListener('click', async () => {
+      if (!upFile) return;
+      hapticTick();
+      const { tw, th } = getTargetUpscaleDims(upOrigW, upOrigH, upScale);
+      const baseName = upFile.name.replace(/\.[^/.]+$/, '');
+
+      if (upFile.type.startsWith('image/')) {
+        upRun.disabled = true;
+        showToast('Memproses...');
+        const img = new Image();
+        img.onload = async () => {
+          upCanvas.width = tw;
+          upCanvas.height = th;
+          const ctx = upCanvas.getContext('2d');
+          ctx.imageSmoothingEnabled = true;
+          ctx.imageSmoothingQuality = 'high';
+          ctx.drawImage(img, 0, 0, tw, th);
+          applySharpen(ctx, tw, th, 0.35);
+
+          upCanvas.toBlob(async blob => {
+            const objUrl = URL.createObjectURL(blob);
+            const album = {
+              id: 'alb_' + Date.now(),
+              tool: 'upscale',
+              title: baseName,
+              badge: `${upScale}x`,
+              subBadge: `${tw}×${th}`,
+              createdAt: Date.now(),
+              coverUrl: objUrl,
+              coverType: 'image',
+              items: [{
+                id: 'up_0',
+                type: 'image',
+                label: `${tw}×${th}`,
+                meta: formatBytes(blob.size),
+                url: objUrl,
+                blob,
+                filename: `upscale_${upScale}x_${baseName}.png`
+              }]
+            };
+            await AlbumStore.add(album);
+            upRun.disabled = false;
+            upCancel.click();
+            hapticTick(720, 0.03);
+            showToast('Tersimpan di Album');
+            openCustomDisplay(album.items, 0, album);
+          }, 'image/png');
+        };
+        img.src = URL.createObjectURL(upFile);
+      } else if (upFile.type.startsWith('video/')) {
+        upRun.disabled = true;
+        upProgressWrap.classList.remove('hidden');
+        upProgressBar.style.width = '0%';
+        upProgressPct.textContent = '0%';
+
+        const offCanvas = document.createElement('canvas');
+        offCanvas.width = tw;
+        offCanvas.height = th;
+        const ctx = offCanvas.getContext('2d');
+        ctx.imageSmoothingEnabled = true;
+        ctx.imageSmoothingQuality = 'high';
+
+        const tempVid = document.createElement('video');
+        tempVid.src = URL.createObjectURL(upFile);
+        tempVid.muted = true;
+        tempVid.playsInline = true;
+        await tempVid.play();
+        tempVid.pause();
+        tempVid.currentTime = 0;
+
+        const stream = offCanvas.captureStream(30);
+        const recorder = new MediaRecorder(stream, {
+          mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
+          videoBitsPerSecond: 8000000
+        });
+        const chunks = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'video/mp4' });
+          const objUrl = URL.createObjectURL(blob);
+          const thumb = await captureVideoThumb(blob);
+          const album = {
+            id: 'alb_' + Date.now(),
+            tool: 'upscale',
+            title: baseName,
+            badge: `${upScale}x`,
+            subBadge: `${tw}×${th}`,
+            createdAt: Date.now(),
+            coverUrl: thumb,
+            coverType: 'video',
+            items: [{
+              id: 'up_0',
+              type: 'video',
+              label: `${tw}×${th}`,
+              meta: formatBytes(blob.size),
+              url: objUrl,
+              blob,
+              filename: `upscale_${upScale}x_${baseName}.mp4`
+            }]
+          };
+          await AlbumStore.add(album);
+          upRun.disabled = false;
+          upCancel.click();
+          hapticTick(720, 0.03);
+          showToast('Tersimpan di Album');
+          openCustomDisplay(album.items, 0, album);
+        };
+
+        recorder.start();
+        tempVid.play();
+
+        function drawFrame() {
+          if (tempVid.paused || tempVid.ended) {
+            if (recorder.state === 'recording') recorder.stop();
+            return;
+          }
+          ctx.filter = 'contrast(1.04) saturate(1.03)';
+          ctx.drawImage(tempVid, 0, 0, tw, th);
+          const pct = Math.min(99, Math.round((tempVid.currentTime / tempVid.duration) * 100));
+          upProgressBar.style.width = pct + '%';
+          upProgressPct.textContent = pct + '%';
+          requestAnimationFrame(drawFrame);
+        }
+        drawFrame();
+      }
+    });
+
+    // =========================================================================
+    // TOOL 3: COMPRESS FOTO / VIDEO (Saves Result as Persistent Album)
+    // =========================================================================
+    const cmpInput = document.getElementById('cmp-input');
+    const cmpPick = document.getElementById('cmp-pick');
+    const cmpFilename = document.getElementById('cmp-filename');
+    const cmpWorkspace = document.getElementById('cmp-workspace');
+    const cmpCancel = document.getElementById('cmp-cancel');
+    const cmpImgPreview = document.getElementById('cmp-img-preview');
+    const cmpVideoPreview = document.getElementById('cmp-video-preview');
+    const cmpQuality = document.getElementById('cmp-quality');
+    const cmpQualityVal = document.getElementById('cmp-quality-val');
+    const cmpSizeBefore = document.getElementById('cmp-size-before');
+    const cmpSizeAfter = document.getElementById('cmp-size-after');
+    const cmpRatio = document.getElementById('cmp-ratio');
+    const cmpRun = document.getElementById('cmp-run');
+    const cmpProgressWrap = document.getElementById('cmp-progress-wrap');
+    const cmpProgressBar = document.getElementById('cmp-progress-bar');
+    const cmpProgressPct = document.getElementById('cmp-progress-pct');
+
+    let cmpFile = null;
+    let cmpResizeScale = 1;
+    let cmpResultBlob = null;
+    let cmpLoadedImg = null;
+
+    cmpPick.addEventListener('click', () => cmpInput.click());
+
+    cmpCancel.addEventListener('click', () => {
+      hapticTick();
+      cmpFile = null;
+      cmpResultBlob = null;
+      cmpInput.value = '';
+      cmpFilename.textContent = 'Foto / Video';
+      cmpWorkspace.classList.add('hidden');
+      cmpRun.classList.add('hidden');
+      renderAllAlbums();
+    });
+
+    document.querySelectorAll('.cmp-resize-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        hapticTick();
+        cmpResizeScale = parseFloat(btn.dataset.resize);
+        document.querySelectorAll('.cmp-resize-btn').forEach(b => {
+          b.classList.remove('bg-zinc-100', 'text-zinc-950');
+          b.classList.add('text-zinc-400');
+        });
+        btn.classList.add('bg-zinc-100', 'text-zinc-950');
+        btn.classList.remove('text-zinc-400');
+        if (cmpFile && cmpFile.type.startsWith('image/')) compressImageLive();
+      });
+    });
+
+    cmpQuality.addEventListener('input', () => {
+      cmpQualityVal.textContent = cmpQuality.value + '%';
+      if (cmpFile && cmpFile.type.startsWith('image/')) compressImageLive();
+    });
+
+    cmpInput.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      hapticTick();
+      cmpFile = file;
+      cmpResultBlob = null;
+      cmpFilename.textContent = file.name;
+      cmpSizeBefore.textContent = formatBytes(file.size);
+      document.getElementById('cmp-empty').classList.add('hidden');
+      cmpWorkspace.classList.remove('hidden');
+      cmpRun.classList.remove('hidden');
+      cmpProgressWrap.classList.add('hidden');
+
+      if (file.type.startsWith('image/')) {
+        cmpVideoPreview.classList.add('hidden');
+        cmpImgPreview.classList.remove('hidden');
+
+        const img = new Image();
+        img.onload = () => {
+          cmpLoadedImg = img;
+          compressImageLive();
+        };
+        img.src = URL.createObjectURL(file);
+      } else if (file.type.startsWith('video/')) {
+        cmpImgPreview.classList.add('hidden');
+        cmpVideoPreview.classList.remove('hidden');
+        cmpVideoPreview.src = URL.createObjectURL(file);
+        cmpVideoPreview.play().catch(() => {});
+        const estBytes = Math.round(file.size * (parseInt(cmpQuality.value, 10) / 100) * cmpResizeScale);
+        cmpSizeAfter.textContent = '~' + formatBytes(estBytes);
+        cmpRatio.textContent = `-${Math.max(5, 100 - Math.round((estBytes / file.size) * 100))}%`;
+      }
+    });
+
+    function compressImageLive() {
+      if (!cmpLoadedImg || !cmpFile) return;
+      const w = Math.max(1, Math.round(cmpLoadedImg.naturalWidth * cmpResizeScale));
+      const h = Math.max(1, Math.round(cmpLoadedImg.naturalHeight * cmpResizeScale));
+      const canvas = document.createElement('canvas');
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext('2d').drawImage(cmpLoadedImg, 0, 0, w, h);
+
+      const q = parseInt(cmpQuality.value, 10) / 100;
+      canvas.toBlob(blob => {
+        if (!blob) return;
+        cmpResultBlob = blob;
+        cmpImgPreview.src = URL.createObjectURL(blob);
+        cmpSizeAfter.textContent = formatBytes(blob.size);
+        const saved = Math.round(((cmpFile.size - blob.size) / cmpFile.size) * 100);
+        cmpRatio.textContent = saved >= 0 ? `-${saved}%` : `+${Math.abs(saved)}%`;
+      }, 'image/jpeg', q);
+    }
+
+    cmpRun.addEventListener('click', async () => {
+      if (!cmpFile) return;
+      hapticTick();
+      const baseName = cmpFile.name.replace(/\.[^/.]+$/, '');
+
+      if (cmpFile.type.startsWith('image/') && cmpResultBlob) {
+        const objUrl = URL.createObjectURL(cmpResultBlob);
+        const saved = Math.round(((cmpFile.size - cmpResultBlob.size) / cmpFile.size) * 100);
+        const badgeText = saved >= 0 ? `-${saved}%` : `${cmpQuality.value}%`;
+        const album = {
+          id: 'alb_' + Date.now(),
+          tool: 'compress',
+          title: baseName,
+          badge: badgeText,
+          subBadge: formatBytes(cmpResultBlob.size),
+          createdAt: Date.now(),
+          coverUrl: objUrl,
+          coverType: 'image',
+          items: [{
+            id: 'cmp_0',
+            type: 'image',
+            label: formatBytes(cmpResultBlob.size),
+            meta: badgeText,
+            url: objUrl,
+            blob: cmpResultBlob,
+            filename: `compressed_${baseName}.jpg`
+          }]
+        };
+        await AlbumStore.add(album);
+        cmpCancel.click();
+        hapticTick(720, 0.03);
+        showToast('Tersimpan di Album');
+        openCustomDisplay(album.items, 0, album);
+        return;
+      }
+
+      if (cmpFile.type.startsWith('video/')) {
+        cmpRun.disabled = true;
+        cmpProgressWrap.classList.remove('hidden');
+        cmpProgressBar.style.width = '0%';
+        cmpProgressPct.textContent = '0%';
+
+        const tempVid = document.createElement('video');
+        tempVid.src = URL.createObjectURL(cmpFile);
+        tempVid.muted = true;
+        tempVid.playsInline = true;
+        await tempVid.play();
+        tempVid.pause();
+        tempVid.currentTime = 0;
+
+        const w = Math.max(2, Math.round(tempVid.videoWidth * cmpResizeScale));
+        const h = Math.max(2, Math.round(tempVid.videoHeight * cmpResizeScale));
+        const canvas = document.createElement('canvas');
+        canvas.width = w;
+        canvas.height = h;
+        const ctx = canvas.getContext('2d');
+
+        const qFactor = parseInt(cmpQuality.value, 10) / 100;
+        const targetBitrate = Math.max(250000, Math.round(2500000 * qFactor * cmpResizeScale));
+
+        const stream = canvas.captureStream(24);
+        const recorder = new MediaRecorder(stream, {
+          mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
+          videoBitsPerSecond: targetBitrate
+        });
+
+        const chunks = [];
+        recorder.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+        recorder.onstop = async () => {
+          const blob = new Blob(chunks, { type: 'video/mp4' });
+          const objUrl = URL.createObjectURL(blob);
+          const thumb = await captureVideoThumb(blob);
+          const saved = Math.round(((cmpFile.size - blob.size) / cmpFile.size) * 100);
+          const badgeText = saved >= 0 ? `-${saved}%` : `-${Math.round((1 - qFactor) * 60)}%`;
+
+          const album = {
+            id: 'alb_' + Date.now(),
+            tool: 'compress',
+            title: baseName,
+            badge: badgeText,
+            subBadge: formatBytes(blob.size),
+            createdAt: Date.now(),
+            coverUrl: thumb,
+            coverType: 'video',
+            items: [{
+              id: 'cmp_0',
+              type: 'video',
+              label: formatBytes(blob.size),
+              meta: badgeText,
+              url: objUrl,
+              blob,
+              filename: `compressed_${baseName}.mp4`
+            }]
+          };
+          await AlbumStore.add(album);
+          cmpRun.disabled = false;
+          cmpCancel.click();
+          hapticTick(720, 0.03);
+          showToast('Tersimpan di Album');
+          openCustomDisplay(album.items, 0, album);
+        };
+
+        recorder.start();
+        tempVid.play();
+
+        function step() {
+          if (tempVid.paused || tempVid.ended) {
+            if (recorder.state === 'recording') recorder.stop();
+            return;
+          }
+          ctx.drawImage(tempVid, 0, 0, w, h);
+          const pct = Math.min(99, Math.round((tempVid.currentTime / tempVid.duration) * 100));
+          cmpProgressBar.style.width = pct + '%';
+          cmpProgressPct.textContent = pct + '%';
+          requestAnimationFrame(step);
+        }
+        step();
+      }
+    });
+
+    // =========================================================================
+    // TOOL 4: CONVERT MP4 TO MP3 (Saves Result as Persistent Album)
+    // =========================================================================
+    const mp3Input = document.getElementById('mp3-input');
+    const mp3Pick = document.getElementById('mp3-pick');
+    const mp3Filename = document.getElementById('mp3-filename');
+    const mp3Workspace = document.getElementById('mp3-workspace');
+    const mp3Cancel = document.getElementById('mp3-cancel');
+    const mp3VideoPreview = document.getElementById('mp3-video-preview');
+    const mp3Duration = document.getElementById('mp3-duration');
+    const mp3OutSize = document.getElementById('mp3-out-size');
+    const mp3ProgressWrap = document.getElementById('mp3-progress-wrap');
+    const mp3ProgressBar = document.getElementById('mp3-progress-bar');
+    const mp3ProgressPct = document.getElementById('mp3-progress-pct');
+    const mp3Run = document.getElementById('mp3-run');
+
+    let mp3File = null;
+    let mp3Kbps = 192;
+
+    mp3Pick.addEventListener('click', () => mp3Input.click());
+
+    mp3Cancel.addEventListener('click', () => {
+      hapticTick();
+      mp3File = null;
+      mp3Input.value = '';
+      mp3Filename.textContent = 'File MP4';
+      mp3Workspace.classList.add('hidden');
+      mp3Run.classList.add('hidden');
+      renderAllAlbums();
+    });
+
+    document.querySelectorAll('.mp3-kbps-btn').forEach(btn => {
+      btn.addEventListener('click', () => {
+        hapticTick();
+        mp3Kbps = parseInt(btn.dataset.kbps, 10);
+        document.querySelectorAll('.mp3-kbps-btn').forEach(b => {
+          b.classList.remove('bg-zinc-100', 'text-zinc-950');
+          b.classList.add('text-zinc-400');
+        });
+        btn.classList.add('bg-zinc-100', 'text-zinc-950');
+        btn.classList.remove('text-zinc-400');
+        mp3OutSize.textContent = `MP3 • ${mp3Kbps} kbps`;
+      });
+    });
+
+    mp3Input.addEventListener('change', e => {
+      const file = e.target.files[0];
+      if (!file) return;
+      hapticTick();
+      mp3File = file;
+      mp3Filename.textContent = file.name;
+      document.getElementById('mp3-empty').classList.add('hidden');
+      mp3Workspace.classList.remove('hidden');
+      mp3Run.classList.remove('hidden');
+      mp3ProgressWrap.classList.add('hidden');
+
+      mp3VideoPreview.src = URL.createObjectURL(file);
+      mp3VideoPreview.play().catch(() => {});
+      mp3VideoPreview.onloadedmetadata = () => {
+        mp3Duration.textContent = formatTime(mp3VideoPreview.duration);
+      };
+    });
+
+    mp3Run.addEventListener('click', async () => {
+      if (!mp3File) return;
+      hapticTick();
+      mp3Run.disabled = true;
+      mp3ProgressWrap.classList.remove('hidden');
+      mp3ProgressBar.style.width = '5%';
+      mp3ProgressPct.textContent = '5%';
+
+      const baseName = mp3File.name.replace(/\.[^/.]+$/, '');
+      const thumb = await captureVideoThumb(mp3File);
+
+      try {
+        const arrayBuffer = await mp3File.arrayBuffer();
+        const decodeCtx = new (window.AudioContext || window.webkitAudioContext)();
+        const audioBuffer = await decodeCtx.decodeAudioData(arrayBuffer);
+
+        const channels = Math.min(2, audioBuffer.numberOfChannels);
+        const sampleRate = audioBuffer.sampleRate;
+        const leftFloat = audioBuffer.getChannelData(0);
+        const rightFloat = channels > 1 ? audioBuffer.getChannelData(1) : leftFloat;
+
+        const len = leftFloat.length;
+        const leftInt16 = new Int16Array(len);
+        const rightInt16 = new Int16Array(len);
+
+        for (let i = 0; i < len; i++) {
+          const l = Math.max(-1, Math.min(1, leftFloat[i]));
+          leftInt16[i] = l < 0 ? l * 0x8000 : l * 0x7FFF;
+          if (channels > 1) {
+            const r = Math.max(-1, Math.min(1, rightFloat[i]));
+            rightInt16[i] = r < 0 ? r * 0x8000 : r * 0x7FFF;
+          }
+        }
+
+        if (typeof lamejs !== 'undefined') {
+          const mp3Encoder = new lamejs.Mp3Encoder(channels, sampleRate, mp3Kbps);
+          const mp3Data = [];
+          const blockSize = 1152 * 40;
+
+          let offset = 0;
+          function encodeChunk() {
+            const end = Math.min(offset + blockSize, len);
+            for (let i = offset; i < end; i += 1152) {
+              const leftChunk = leftInt16.subarray(i, i + 1152);
+              let mp3buf;
+              if (channels === 2) {
+                const rightChunk = rightInt16.subarray(i, i + 1152);
+                mp3buf = mp3Encoder.encodeBuffer(leftChunk, rightChunk);
+              } else {
+                mp3buf = mp3Encoder.encodeBuffer(leftChunk);
+              }
+              if (mp3buf.length > 0) mp3Data.push(mp3buf);
+            }
+
+            offset = end;
+            const pct = Math.min(99, Math.round((offset / len) * 100));
+            mp3ProgressBar.style.width = pct + '%';
+            mp3ProgressPct.textContent = pct + '%';
+
+            if (offset < len) {
+              setTimeout(encodeChunk, 0);
+            } else {
+              const flushBuf = mp3Encoder.flush();
+              if (flushBuf.length > 0) mp3Data.push(flushBuf);
+              const blob = new Blob(mp3Data, { type: 'audio/mp3' });
+              finishMp3Conversion(blob, baseName, thumb);
+            }
+          }
+          encodeChunk();
+        } else {
+          const blob = encodeWavFallback(audioBuffer);
+          finishMp3Conversion(blob, baseName, thumb);
+        }
+      } catch (err) {
+        mp3Run.disabled = false;
+        mp3ProgressWrap.classList.add('hidden');
+        showToast('Audio tidak ditemukan');
+      }
+    });
+
+    async function finishMp3Conversion(blob, baseName, thumb) {
+      const objUrl = URL.createObjectURL(blob);
+      const album = {
+        id: 'alb_' + Date.now(),
+        tool: 'mp3',
+        title: baseName,
+        badge: `${mp3Kbps}k`,
+        subBadge: formatBytes(blob.size),
+        createdAt: Date.now(),
+        coverUrl: thumb,
+        coverType: 'audio',
+        items: [{
+          id: 'mp3_0',
+          type: 'audio',
+          label: `${baseName}.mp3`,
+          meta: `${mp3Kbps} kbps • ${formatBytes(blob.size)}`,
+          url: objUrl,
+          blob,
+          filename: `${baseName}.mp3`
+        }]
+      };
+      await AlbumStore.add(album);
+      mp3Run.disabled = false;
+      mp3Cancel.click();
+      hapticTick(720, 0.03);
+      showToast('Tersimpan di Album');
+      openCustomDisplay(album.items, 0, album);
+    }
+
+    function encodeWavFallback(buffer) {
+      const numOfChan = buffer.numberOfChannels;
+      const length = buffer.length * numOfChan * 2 + 44;
+      const out = new ArrayBuffer(length);
+      const view = new DataView(out);
+      const channels = [];
+      let pos = 0;
+
+      const setUint16 = data => { view.setUint16(pos, data, true); pos += 2; };
+      const setUint32 = data => { view.setUint32(pos, data, true); pos += 4; };
+
+      setUint32(0x46464952);
+      setUint32(length - 8);
+      setUint32(0x45564157);
+      setUint32(0x20746d66);
+      setUint32(16);
+      setUint16(1);
+      setUint16(numOfChan);
+      setUint32(buffer.sampleRate);
+      setUint32(buffer.sampleRate * 2 * numOfChan);
+      setUint16(numOfChan * 2);
+      setUint16(16);
+      setUint32(0x61746164);
+      setUint32(length - pos - 4);
+
+      for (let i = 0; i < numOfChan; i++) channels.push(buffer.getChannelData(i));
+      let offset = 0;
+      while (pos < length) {
+        for (let i = 0; i < numOfChan; i++) {
+          let sample = Math.max(-1, Math.min(1, channels[i][offset]));
+          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
+          view.setInt16(pos, sample, true);
+          pos += 2;
+        }
+        offset++;
+      }
+      return new Blob([out], { type: 'audio/mp3' });
+    }
+
+    // =========================================================================
+    // SIDEBAR: MENU PENGATURAN (Data Lokal, Hapus Hasil, Resolver, Install PWA)
+    // =========================================================================
+    const sidebar = document.getElementById('sidebar');
+    const sbPanel = document.getElementById('sb-panel');
+    const sbOverlay = document.getElementById('sb-overlay');
+    const sbAutosave = document.getElementById('sb-autosave');
+    const sbAutosaveKnob = document.getElementById('sb-autosave-knob');
+    const sbStorage = document.getElementById('sb-storage');
+    const sbPersist = document.getElementById('sb-persist');
+    const sbClearAll = document.getElementById('sb-clear-all');
+    const sbCobaltUrl = document.getElementById('sb-cobalt-url');
+    const sbCobaltKey = document.getElementById('sb-cobalt-key');
+    const sbCobaltSave = document.getElementById('sb-cobalt-save');
+    const sbInstall = document.getElementById('sb-install');
+    const sbInstallText = document.getElementById('sb-install-text');
+
+    function renderAutosaveSwitch() {
+      const on = Settings.get('autosave', true);
+      sbAutosave.className = `pressable relative w-11 h-6 rounded-full shrink-0 ${on ? 'bg-zinc-100' : 'bg-zinc-700'}`;
+      sbAutosaveKnob.className = `absolute top-0.5 ${on ? 'left-[22px] bg-zinc-950' : 'left-0.5 bg-zinc-300'} w-5 h-5 rounded-full transition-all duration-150`;
+    }
+
+    async function refreshSidebar() {
+      ['download', 'upscale', 'compress', 'mp3'].forEach(t => {
+        const el = document.querySelector(`[data-count="${t}"]`);
+        if (el) el.textContent = AlbumStore.byTool(t).length;
+      });
+      renderAutosaveSwitch();
+      sbCobaltUrl.value = Settings.get('cobaltUrl', '') || '';
+      sbCobaltKey.value = Settings.get('cobaltKey', '') || '';
+
+      let text = `${AlbumStore.albums.length} album`;
+      try {
+        if (navigator.storage && navigator.storage.estimate) {
+          const est = await navigator.storage.estimate();
+          text += ` • ${formatBytes(est.usage || 0)}`;
+        }
+      } catch (e) {}
+      sbStorage.textContent = text;
+    }
+
+    function openSidebar() {
+      hapticTick();
+      refreshSidebar();
+      sidebar.classList.remove('hidden');
+      requestAnimationFrame(() => requestAnimationFrame(() => sbPanel.classList.remove('translate-x-full')));
+      lucide.createIcons();
+    }
+
+    function closeSidebar() {
+      sbPanel.classList.add('translate-x-full');
+      setTimeout(() => sidebar.classList.add('hidden'), 200);
+    }
+
+    document.getElementById('menu-btn').addEventListener('click', openSidebar);
+    document.getElementById('sb-close').addEventListener('click', () => { hapticTick(); closeSidebar(); });
+    sbOverlay.addEventListener('click', closeSidebar);
+
+    sbAutosave.addEventListener('click', () => {
+      hapticTick();
+      const next = !Settings.get('autosave', true);
+      Settings.set('autosave', next);
+      renderAutosaveSwitch();
+      showToast(next ? 'Simpan otomatis aktif' : 'Simpan otomatis mati');
+    });
+
+    sbPersist.addEventListener('click', async () => {
+      hapticTick();
+      try {
+        if (navigator.storage && navigator.storage.persist) {
+          const ok = await navigator.storage.persist();
+          showToast(ok ? 'Penyimpanan dikunci' : 'Ditolak browser');
+        } else {
+          showToast('Tidak didukung');
+        }
+      } catch (e) {
+        showToast('Tidak didukung');
+      }
+    });
+
+    async function clearAlbums(tool) {
+      const list = tool ? AlbumStore.albums.filter(a => a.tool === tool) : AlbumStore.albums.slice();
+      for (const alb of list) {
+        alb.items.forEach(it => {
+          if (it.blob && it.url) { try { URL.revokeObjectURL(it.url); } catch (e) {} }
+        });
+        await AlbumStore.remove(alb.id);
+      }
+      refreshSidebar();
+    }
+
+    document.querySelectorAll('.sb-clear').forEach(btn => {
+      btn.addEventListener('click', async () => {
+        hapticTick();
+        const tool = btn.dataset.clear;
+        if (AlbumStore.byTool(tool).length === 0) { showToast('Sudah kosong'); return; }
+        if (!confirm('Hapus semua hasil di tool ini?')) return;
+        await clearAlbums(tool);
+        showToast('Dihapus');
+      });
+    });
+
+    sbClearAll.addEventListener('click', async () => {
+      hapticTick();
+      if (AlbumStore.albums.length === 0) { showToast('Sudah kosong'); return; }
+      if (!confirm('Hapus SEMUA hasil dari semua tool?')) return;
+      await clearAlbums();
+      showToast('Semua dihapus');
+    });
+
+    sbCobaltSave.addEventListener('click', () => {
+      hapticTick();
+      let u = sbCobaltUrl.value.trim();
+      if (u && !/^https?:\/\//i.test(u)) u = 'https://' + u;
+      Settings.set('cobaltUrl', u);
+      Settings.set('cobaltKey', sbCobaltKey.value.trim());
+      sbCobaltUrl.value = u;
+      showToast('Resolver tersimpan');
+    });
+
+    // =========================================================================
+    // PWA: INSTALL PROMPT + SERVICE WORKER
+    // =========================================================================
+    let deferredInstall = null;
+    const isStandalone = window.matchMedia('(display-mode: standalone)').matches || window.navigator.standalone === true;
+    if (isStandalone) {
+      sbInstall.classList.add('hidden');
+    }
+
+    window.addEventListener('beforeinstallprompt', e => {
+      e.preventDefault();
+      deferredInstall = e;
+    });
+
+    window.addEventListener('appinstalled', () => {
+      deferredInstall = null;
+      sbInstall.classList.add('hidden');
+      showToast('Terpasang');
+    });
+
+    sbInstall.addEventListener('click', async () => {
+      hapticTick();
+      if (deferredInstall) {
+        deferredInstall.prompt();
+        try { await deferredInstall.userChoice; } catch (e) {}
+        deferredInstall = null;
+      } else if (/iphone|ipad|ipod/i.test(navigator.userAgent)) {
+        showToast('Safari: Bagikan > Tambah ke Layar Utama');
+      } else {
+        showToast('Gunakan menu browser > Instal aplikasi');
+      }
+    });
+
+    if ('serviceWorker' in navigator) {
+      window.addEventListener('load', () => {
+        navigator.serviceWorker.register('./sw.js').catch(() => {});
+      });
+    }
+
+    // Boot Persistent Albums
+    AlbumStore.init();
+  </script>
+</body>
+</html>
